@@ -1,22 +1,57 @@
 """
 URL configuration for BE_coffee project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+Coffee Shop Management System API
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+@api_view(['GET'])
+def api_root(request):
+    """
+    API Root - Tổng quan về các endpoints có sẵn
+    """
+    return Response({
+        'message': 'Chào mừng đến với Coffee Shop Management API',
+        'version': '1.0.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'api': '/api/',
+            'categories': '/api/categories/',
+            'products': '/api/products/',
+            'ingredients': '/api/ingredients/',
+            'recipes': '/api/recipes/',
+            'customers': '/api/customers/',
+            'employees': '/api/employees/',
+            'orders': '/api/orders/',
+            'order_details': '/api/order-details/',
+            'inventory': '/api/inventory/',
+            'import_details': '/api/import-details/',
+        },
+        'documentation': {
+            'swagger': '/api/docs/',
+            'redoc': '/api/redoc/',
+        }
+    })
+
 
 urlpatterns = [
+    # Admin site
     path('admin/', admin.site.urls),
+    
+    # API Root
+    path('', api_root, name='api-root'),
+    
+    # API endpoints
+    path('api/', include('api.urls')),
 ]
+
+# Serve media and static files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

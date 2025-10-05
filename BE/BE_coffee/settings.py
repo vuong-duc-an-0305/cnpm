@@ -36,9 +36,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',       
-    'corsheaders',          
     
+    # Third party apps
+    'rest_framework',
+    'corsheaders',
+    
+    # Local apps
+    'api.categories',
+    'api.products',
+    'api.ingredients',
+    'api.recipes',
+    'api.customers',
+    'api.employees',
+    'api.orders',
+    'api.inventory',
 ]
 
 MIDDLEWARE = [
@@ -138,7 +149,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Cho phép truy cập không cần đăng nhập (development)
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
