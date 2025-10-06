@@ -17,4 +17,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        // keep /api prefix so FE baseURL '/api' vẫn khớp với BE
+        // nếu BE không có prefix /api, bỏ dòng rewrite dưới đây hoặc chỉnh theo BE
+        // rewrite: (path) => path.replace(/^\/api/, '')
+      },
+    },
+  },
 })

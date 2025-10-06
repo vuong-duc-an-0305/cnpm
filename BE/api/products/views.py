@@ -4,7 +4,7 @@ View Layer - API endpoints cho Sản phẩm
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 
 from .models import SanPham
 from .serializers import (
@@ -33,7 +33,7 @@ class SanPhamViewSet(viewsets.ModelViewSet):
     """
     queryset = SanPham.objects.all()
     serializer_class = SanPhamSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""

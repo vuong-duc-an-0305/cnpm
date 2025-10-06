@@ -4,7 +4,7 @@ View Layer - API endpoints cho Danh mục sản phẩm
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 
 from .models import DanhMucSanPham
 from .serializers import DanhMucSanPhamSerializer, DanhMucSanPhamListSerializer
@@ -25,7 +25,7 @@ class DanhMucSanPhamViewSet(viewsets.ModelViewSet):
     """
     queryset = DanhMucSanPham.objects.all()
     serializer_class = DanhMucSanPhamSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""

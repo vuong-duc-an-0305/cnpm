@@ -4,7 +4,7 @@ View Layer - API endpoints cho Hóa đơn và Chi tiết đơn hàng
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from datetime import datetime
 
 from .models import HoaDon, ChiTietDonHang
@@ -37,7 +37,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
     """
     queryset = HoaDon.objects.all()
     serializer_class = HoaDonSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""
@@ -263,7 +263,7 @@ class ChiTietDonHangViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = ChiTietDonHang.objects.all()
     serializer_class = ChiTietDonHangSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':

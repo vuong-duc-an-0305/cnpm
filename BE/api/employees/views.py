@@ -4,7 +4,7 @@ View Layer - API endpoints cho Nhân viên
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 
 from .models import NhanVien
 from .serializers import (
@@ -30,7 +30,7 @@ class NhanVienViewSet(viewsets.ModelViewSet):
     """
     queryset = NhanVien.objects.all()
     serializer_class = NhanVienSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""

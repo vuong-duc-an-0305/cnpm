@@ -4,8 +4,10 @@ Service Layer - Business Logic cho Hóa đơn và Chi tiết đơn hàng
 from django.db import transaction
 from django.db.models import Q, Count, Sum, Avg, F
 from django.db.models.functions import TruncDate, Coalesce
+from django.db.models import Value, DecimalField
 from django.utils import timezone
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from .models import HoaDon, ChiTietDonHang
 from api.products.models import SanPham
@@ -97,7 +99,7 @@ class OrderService:
         
         # Kiểm tra sản phẩm và tính toán
         order_details = []
-        total_amount = 0
+        total_amount = Decimal('0')
         errors = []
         
         for item in items_data:
@@ -143,7 +145,10 @@ class OrderService:
             return False, "Không có sản phẩm hợp lệ trong đơn hàng", []
         
         # Tính giảm giá và thành tiền
-        discount = order_data.get('Discount', 0)
+        # Đảm bảo discount là Decimal
+        discount = order_data.get('Discount', Decimal('0'))
+        if not isinstance(discount, Decimal):
+            discount = Decimal(str(discount))
         if discount > total_amount:
             discount = total_amount
         
@@ -288,9 +293,9 @@ class OrderService:
         
         stats = queryset.aggregate(
             total_orders=Count('OrderID'),
-            total_revenue=Coalesce(Sum('FinalAmount'), 0),
-            total_discount=Coalesce(Sum('Discount'), 0),
-            average_order_value=Coalesce(Avg('FinalAmount'), 0)
+            total_revenue=Coalesce(Sum('FinalAmount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))),
+            total_discount=Coalesce(Sum('Discount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))),
+            average_order_value=Coalesce(Avg('FinalAmount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)))
         )
         
         # Thống kê theo ngày

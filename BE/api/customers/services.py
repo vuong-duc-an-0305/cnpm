@@ -1,7 +1,7 @@
 """
 Service Layer - Business Logic cho Khách hàng
 """
-from django.db.models import Q, Count, Sum, F
+from django.db.models import Q, Count, Sum, F, DecimalField, Value
 from django.db.models.functions import Coalesce
 from .models import KhachHang
 
@@ -34,7 +34,10 @@ class CustomerService:
         try:
             return KhachHang.objects.annotate(
                 total_orders=Count('hoadon'),
-                total_spent=Coalesce(Sum('hoadon__FinalAmount'), 0)
+                total_spent=Coalesce(
+                    Sum('hoadon__FinalAmount'),
+                    Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))
+                )
             ).get(CustomerID=customer_id)
         except KhachHang.DoesNotExist:
             return None

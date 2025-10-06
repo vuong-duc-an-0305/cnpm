@@ -2,7 +2,7 @@
 Service Layer - Business Logic cho Phiếu nhập kho
 """
 from django.db import transaction
-from django.db.models import Count, Sum, Avg
+from django.db.models import Count, Sum, Avg, F, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import datetime, timedelta
 
@@ -165,11 +165,14 @@ class InventoryService:
             'IngredientID__IngredientName'
         ).annotate(
             total_quantity=Sum('Quantity'),
-            total_cost=Sum(F('Quantity') * F('UnitPrice')),
+            total_cost=Sum(
+                ExpressionWrapper(
+                    F('Quantity') * F('UnitPrice'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                )
+            ),
             import_count=Count('ImportID', distinct=True)
         ).order_by('-total_quantity')[:10]
-        
-        from django.db.models import F
         
         return {
             'summary': stats,

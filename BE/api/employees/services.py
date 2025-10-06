@@ -1,7 +1,7 @@
 """
 Service Layer - Business Logic cho Nhân viên
 """
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum, Avg, DecimalField, Value
 from .models import NhanVien
 
 
@@ -105,7 +105,6 @@ class EmployeeService:
         if not employee:
             return None
         
-        from django.db.models import Sum, Avg
         from django.db.models.functions import Coalesce
         
         orders = employee.hoadon_set.all()
@@ -116,13 +115,13 @@ class EmployeeService:
             'employee_name': employee.FullName,
             'total_orders': orders.count(),
             'total_revenue': orders.aggregate(
-                total=Coalesce(Sum('FinalAmount'), 0)
+                total=Coalesce(Sum('FinalAmount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)))
             )['total'],
             'average_order_value': orders.aggregate(
-                avg=Coalesce(Avg('FinalAmount'), 0)
+                avg=Coalesce(Avg('FinalAmount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)))
             )['avg'],
             'total_imports': imports.count(),
             'total_import_value': imports.aggregate(
-                total=Coalesce(Sum('TotalAmount'), 0)
+                total=Coalesce(Sum('TotalAmount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)))
             )['total'],
         }

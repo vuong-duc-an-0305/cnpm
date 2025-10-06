@@ -4,7 +4,7 @@ View Layer - API endpoints cho Công thức
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 
 from .models import CongThuc
 from .serializers import (
@@ -30,7 +30,7 @@ class CongThucViewSet(viewsets.ModelViewSet):
     """
     queryset = CongThuc.objects.all()
     serializer_class = CongThucSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""

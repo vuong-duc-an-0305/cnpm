@@ -4,7 +4,7 @@ View Layer - API endpoints cho Khách hàng
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 
 from .models import KhachHang
 from .serializers import (
@@ -34,7 +34,7 @@ class KhachHangViewSet(viewsets.ModelViewSet):
     """
     queryset = KhachHang.objects.all()
     serializer_class = KhachHangSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""

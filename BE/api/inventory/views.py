@@ -4,7 +4,7 @@ View Layer - API endpoints cho Phiếu nhập kho
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from datetime import datetime
 
 from .models import PhieuNhapKho, ChiTietNhapKho
@@ -33,7 +33,7 @@ class PhieuNhapKhoViewSet(viewsets.ModelViewSet):
     """
     queryset = PhieuNhapKho.objects.all()
     serializer_class = PhieuNhapKhoSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         """Chọn serializer phù hợp"""
@@ -178,7 +178,7 @@ class ChiTietNhapKhoViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = ChiTietNhapKho.objects.all()
     serializer_class = ChiTietNhapKhoSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
