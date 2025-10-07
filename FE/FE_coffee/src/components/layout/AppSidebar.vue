@@ -1,9 +1,9 @@
 <template>
-  <aside 
+  <aside
     :class="[
       'fixed left-0 top-0 z-40 h-screen transition-transform duration-300 ease-in-out',
       'bg-gradient-to-b from-coffee-700 to-coffee-800 w-64 shadow-2xl',
-      isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
     ]"
   >
     <div class="flex h-full flex-col">
@@ -13,7 +13,7 @@
           <Coffee class="w-8 h-8 text-white" />
         </div>
         <div>
-          <h1 class="text-xl font-bold text-white">Coffee Shop</h1>
+          <h1 class="text-xl font-bold text-white">Xưởng Coffee</h1>
           <p class="text-xs text-coffee-300">Management System</p>
         </div>
       </div>
@@ -29,12 +29,15 @@
             'hover:bg-coffee-600/50 hover:text-white',
             isActiveRoute(item.route)
               ? 'bg-gradient-to-r from-coffee-500 to-coffee-400 text-white shadow-lg scale-105'
-              : 'text-coffee-300'
+              : 'text-coffee-300',
           ]"
         >
           <component :is="item.icon" class="w-5 h-5" />
           <span class="font-medium">{{ item.label }}</span>
-          <span v-if="item.badge" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+          <span
+            v-if="item.badge"
+            class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full"
+          >
             {{ item.badge }}
           </span>
         </router-link>
@@ -43,12 +46,16 @@
       <!-- User Section -->
       <div class="p-4 border-t border-coffee-600">
         <div class="flex items-center gap-3 p-3 bg-coffee-600/50 rounded-xl">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-coffee-500 to-coffee-400 flex items-center justify-center text-white font-bold">
+          <div
+            class="w-10 h-10 rounded-full bg-gradient-to-br from-coffee-500 to-coffee-400 flex items-center justify-center text-white font-bold"
+          >
             {{ userInitials }}
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-white truncate">{{ authUser.name }}</p>
-            <p class="text-xs text-coffee-300 truncate">{{ authUser.role === 'admin' ? 'Administrator' : 'Thu ngân' }}</p>
+            <p class="text-xs text-coffee-300 truncate">
+              {{ authUser.role === 'admin' ? 'Administrator' : 'Thu ngân' }}
+            </p>
           </div>
           <button
             @click="toggleUserMenu"
@@ -77,7 +84,7 @@
             <Settings class="w-4 h-4 inline mr-2" />
             Cài đặt
           </button>
-          <hr class="my-2 border-coffee-200">
+          <hr class="my-2 border-coffee-200" />
           <button
             @click="handleLogout"
             class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -101,19 +108,19 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { 
-  Coffee, 
-  Activity, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  Warehouse, 
-  UserCheck, 
+import {
+  Coffee,
+  Activity,
+  ShoppingCart,
+  Package,
+  Users,
+  Warehouse,
+  UserCheck,
   TrendingUp,
   ChevronDown,
   User,
   Settings,
-  LogOut
+  LogOut,
 } from 'lucide-vue-next'
 import type { User as UserType } from '../../types'
 import { useAuth } from '../../composables/useAuth'
@@ -133,7 +140,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   isOpen: false,
-  user: null
+  user: null,
 })
 
 const emit = defineEmits<{
@@ -150,25 +157,25 @@ const { menuItems: authMenuItems, user: authUser } = useAuth()
 
 // Sử dụng menu items từ auth composable
 const menuItems = computed(() => {
-  return authMenuItems.value.map(item => ({
+  return authMenuItems.value.map((item) => ({
     id: item.name,
     label: item.label,
     route: item.path,
     icon: getIconComponent(item.icon),
-    badge: item.name === 'orders' ? 5 : undefined // Hard-coded for demo
+    badge: item.name === 'orders' ? 5 : undefined, // Hard-coded for demo
   }))
 })
 
 // Helper function để get icon component
 const getIconComponent = (iconName: string) => {
   const iconMap: Record<string, any> = {
-    'BarChart3': Activity,
-    'ShoppingCart': ShoppingCart,
-    'Package': Package,
-    'Users': Users,
-    'UserCheck': UserCheck,
-    'Warehouse': Warehouse,
-    'FileText': TrendingUp
+    BarChart3: Activity,
+    ShoppingCart: ShoppingCart,
+    Package: Package,
+    Users: Users,
+    UserCheck: UserCheck,
+    Warehouse: Warehouse,
+    FileText: TrendingUp,
   }
   return iconMap[iconName] || Activity
 }

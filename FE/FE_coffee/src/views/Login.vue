@@ -1,19 +1,23 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-coffee-50 to-coffee-100 flex items-center justify-center p-4">
+  <div
+    class="min-h-screen bg-gradient-to-br from-coffee-50 to-coffee-100 flex items-center justify-center p-4"
+  >
     <div class="max-w-md w-full">
       <!-- Logo and Title -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-coffee-500 to-coffee-600 rounded-2xl mb-4">
+        <div
+          class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-coffee-500 to-coffee-600 rounded-2xl mb-4"
+        >
           <Coffee class="w-10 h-10 text-white" />
         </div>
-        <h1 class="text-3xl font-bold text-coffee-800 mb-2">Coffee Shop</h1>
+        <h1 class="text-3xl font-bold text-coffee-800 mb-2">Xưởng Coffee</h1>
         <p class="text-coffee-600">Hệ thống quản lý quán cà phê</p>
       </div>
 
       <!-- Login Form -->
       <div class="card p-8">
         <h2 class="text-2xl font-bold text-coffee-800 mb-6 text-center">Đăng nhập</h2>
-        
+
         <form @submit.prevent="handleLogin" class="space-y-6">
           <BaseInput
             v-model="form.username"
@@ -23,7 +27,7 @@
             required
             left-icon="User"
           />
-          
+
           <BaseInput
             v-model="form.password"
             type="password"
@@ -33,7 +37,7 @@
             required
             left-icon="Lock"
           />
-          
+
           <div class="flex items-center justify-between">
             <label class="flex items-center">
               <input
@@ -47,7 +51,7 @@
               Quên mật khẩu?
             </a>
           </div>
-          
+
           <BaseButton
             type="submit"
             :loading="isLoading"
@@ -58,7 +62,7 @@
             Đăng nhập
           </BaseButton>
         </form>
-        
+
         <!-- Demo Credentials -->
         <div class="mt-6 p-4 bg-coffee-50 rounded-xl">
           <h3 class="text-sm font-semibold text-coffee-700 mb-2">Tài khoản hệ thống:</h3>
@@ -68,11 +72,11 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Footer -->
       <div class="text-center mt-8">
         <p class="text-sm text-coffee-500">
-          © 2024 Coffee Shop Management System. All rights reserved.
+          © 2024 Xưởng Coffee Management System. All rights reserved.
         </p>
       </div>
     </div>
@@ -97,44 +101,44 @@ const errors = ref<Record<string, string>>({})
 const form = reactive({
   username: '',
   password: '',
-  rememberMe: false
+  rememberMe: false,
 })
 
 const handleLogin = async () => {
   // Clear previous errors
   errors.value = {}
-  
+
   // Basic validation
   if (!form.username) {
     errors.value.username = 'Vui lòng nhập tên đăng nhập'
     return
   }
-  
+
   if (!form.password) {
     errors.value.password = 'Vui lòng nhập mật khẩu'
     return
   }
-  
+
   try {
     isLoading.value = true
-    
+
     // For demo purposes, we'll simulate login
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
     // Authentication logic với 2 tài khoản cố định
     const validCredentials = {
-      'admin': 'admin123',
-      'cashier': 'cashier123'
+      admin: 'admin123',
+      cashier: 'cashier123',
     }
-    
+
     if (validCredentials[form.username as keyof typeof validCredentials] === form.password) {
       // Store auth token và role
       localStorage.setItem('auth_token', 'demo-token-' + Date.now())
       localStorage.setItem('user_role', form.username)
       localStorage.setItem('user_name', form.username === 'admin' ? 'Administrator' : 'Thu ngân')
-      
+
       toast.success('Đăng nhập thành công!')
-      
+
       // Redirect dựa trên role
       if (form.username === 'cashier') {
         // Cashier redirect trực tiếp đến orders
@@ -146,7 +150,6 @@ const handleLogin = async () => {
     } else {
       toast.error('Tên đăng nhập hoặc mật khẩu không đúng')
     }
-    
   } catch (error) {
     console.error('Login error:', error)
     toast.error('Có lỗi xảy ra khi đăng nhập')
