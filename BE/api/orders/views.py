@@ -138,7 +138,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    @action(detail=True, methods=['patch'])
+    @action(detail=True, methods=['patch'], url_path='update_status')
     def update_status(self, request, pk=None):
         """Cập nhật trạng thái đơn hàng"""
         order = self.get_object()
@@ -160,7 +160,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='revenue_stats')
     def revenue_stats(self, request):
         """Thống kê doanh thu"""
         from_date = request.query_params.get('from_date')
@@ -190,7 +190,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
         stats = OrderService.get_revenue_statistics(from_date_obj, to_date_obj)
         return Response(stats)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='best_selling')
     def best_selling(self, request):
         """Lấy sản phẩm bán chạy nhất"""
         from_date = request.query_params.get('from_date')
@@ -224,7 +224,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
             'to_date': to_date
         })
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='revenue_trend')
     def revenue_trend(self, request):
         """Dữ liệu doanh thu theo thời gian (day|week|month)"""
         from_date = request.query_params.get('from_date')
@@ -247,7 +247,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
         data = OrderService.get_revenue_trend(from_date_obj, to_date_obj, interval)
         return Response(data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='revenue_by_category')
     def revenue_by_category(self, request):
         """Tổng doanh thu theo danh mục"""
         from_date = request.query_params.get('from_date')
@@ -269,7 +269,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
         data = OrderService.get_revenue_by_category(from_date_obj, to_date_obj)
         return Response(data)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='by_customer')
     def by_customer(self, request):
         """Lấy đơn hàng của khách hàng"""
         customer_id = request.query_params.get('customer_id')
@@ -283,7 +283,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
         serializer = HoaDonListSerializer(orders, many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='by_status')
     def by_status(self, request):
         """Lấy đơn hàng theo trạng thái"""
         status_param = request.query_params.get('status')

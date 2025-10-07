@@ -6,4 +6,4 @@ from .views import HoaDonViewSet, ChiTietDonHangViewSet
 
 router = DefaultRouter()
 router.register(r'orders', HoaDonViewSet, basename='order')
-router.register(r'order-details', ChiTietDonHangViewSet, basename='order-detail')
+router.register(r'order_details', ChiTietDonHangViewSet, basename='order_detail')

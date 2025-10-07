@@ -29,53 +29,29 @@ export const orderService = {
 
   // Update order status
   updateStatus: (id: number, status: string, note?: string): Promise<Order> => {
-    // BE sử dụng update_status (gạch dưới). Fallback về update-status nếu cần.
-    return apiService
-      .patch(`/orders/${id}/update_status/`, { Status: status, note })
-      .catch(async (err) => {
-        if (err?.response?.status === 404) {
-          // Thử biến thể gạch nối
-          return apiService.patch(`/orders/${id}/update-status/`, { Status: status, note })
-        }
-        throw err
-      })
+    return apiService.patch(`/orders/${id}/update_status/`, { Status: status, note })
   },
 
   // Get orders by customer
   getByCustomer: (customerId: number): Promise<Order[]> => {
-    return apiService.get('/orders/by-customer/', { customer_id: customerId })
+    return apiService.get('/orders/by_customer/', { customer_id: customerId })
   },
 
   // Get orders by status
   getByStatus: (status: string): Promise<Order[]> => {
-    return apiService.get('/orders/by-status/', { status })
+    return apiService.get('/orders/by_status/', { status })
   },
 
   // Get revenue statistics
   getRevenueStats: (fromDate?: string, toDate?: string): Promise<RevenueStats> => {
-    // Prefer snake_case per BE docs, fallback kebab-case
-    return apiService
-      .get('/orders/revenue_stats/', { from_date: fromDate, to_date: toDate })
-      .catch(async (err) => {
-        if (err?.response?.status === 404) {
-          return apiService.get('/orders/revenue-stats/', { from_date: fromDate, to_date: toDate })
-        }
-        throw err
-      })
+    return apiService.get('/orders/revenue_stats/', { from_date: fromDate, to_date: toDate })
   },
 
   // Get best selling products
   getBestSelling: (fromDate?: string, toDate?: string, limit?: number): Promise<{
     best_selling_products: BestSellingProduct[];
   }> => {
-    return apiService
-      .get('/orders/best_selling/', { from_date: fromDate, to_date: toDate, limit: limit || 10 })
-      .catch(async (err) => {
-        if (err?.response?.status === 404) {
-          return apiService.get('/orders/best-selling/', { from_date: fromDate, to_date: toDate, limit: limit || 10 })
-        }
-        throw err
-      })
+    return apiService.get('/orders/best_selling/', { from_date: fromDate, to_date: toDate, limit: limit || 10 })
   },
 
   // Get order details
@@ -83,7 +59,7 @@ export const orderService = {
     const params: any = {}
     if (orderId) params.order_id = orderId
     if (productId) params.product_id = productId
-    return apiService.get('/order-details/', params)
+    return apiService.get('/order_details/', params)
   },
 
   // Search orders
@@ -98,12 +74,6 @@ export const orderService = {
     interval: string;
   }> => {
     return apiService.get('/orders/revenue_trend/', { from_date: fromDate, to_date: toDate, interval: interval || 'day' })
-      .catch(async (err) => {
-        if (err?.response?.status === 404) {
-          return apiService.get('/orders/revenue-trend/', { from_date: fromDate, to_date: toDate, interval: interval || 'day' })
-        }
-        throw err
-      })
   },
 
   // Revenue by category
@@ -112,11 +82,5 @@ export const orderService = {
     datasets: Array<{ label: string; data: number[] }>;
   }> => {
     return apiService.get('/orders/revenue_by_category/', { from_date: fromDate, to_date: toDate })
-      .catch(async (err) => {
-        if (err?.response?.status === 404) {
-          return apiService.get('/orders/revenue-by-category/', { from_date: fromDate, to_date: toDate })
-        }
-        throw err
-      })
   },
 }

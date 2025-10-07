@@ -45,10 +45,16 @@
         </div>
         <div class="h-80">
           <LineChart
-            v-if="chartData"
+            v-if="chartData && chartData.labels.length > 0"
             :data="chartData"
             :options="chartOptions"
           />
+          <div v-else class="flex items-center justify-center h-full text-coffee-500">
+            <div class="text-center">
+              <TrendingUp class="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p class="text-sm">Không có dữ liệu doanh thu trong khoảng thời gian này</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -57,14 +63,20 @@
         <h3 class="text-lg font-bold text-coffee-800 mb-6">Doanh thu theo danh mục</h3>
         <div class="h-80">
           <DoughnutChart
-            v-if="categoryData"
+            v-if="categoryData && categoryData.labels.length > 0"
             :data="categoryData"
             :options="doughnutOptions"
           />
+          <div v-else class="flex items-center justify-center h-full text-coffee-500">
+            <div class="text-center">
+              <Activity class="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p class="text-sm">Không có dữ liệu doanh thu theo danh mục</p>
+            </div>
+          </div>
         </div>
-        <div class="space-y-2 mt-4">
+        <div v-if="categoryData && categoryData.labels.length > 0" class="space-y-2 mt-4">
           <div
-            v-for="(item, index) in categoryData?.datasets[0].data"
+            v-for="(item, index) in categoryData.datasets[0].data"
             :key="index"
             class="flex items-center justify-between"
           >
@@ -151,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import {
   DollarSign,
@@ -204,13 +216,13 @@ const revenueStats = ref({
 
 const bestSellingProducts = ref<Array<{ name: string; sold: number; revenue: number; trend: 'up'|'down' }>>([])
 
-// Chart data (runtime)
+// Chart data (runtime) - Khởi tạo với dữ liệu rỗng, sẽ được load từ API
 const chartData = ref<CJChartData<'line'>>({
-  labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+  labels: [],
   datasets: [
     {
-      label: 'Doanh thu (K)',
-      data: [4200, 5800, 4600, 7200, 8500, 9200, 8800],
+      label: 'Doanh thu',
+      data: [],
       borderColor: '#D4AF37',
       backgroundColor: 'rgba(212, 175, 55, 0.1)',
       borderWidth: 3,
@@ -220,7 +232,14 @@ const chartData = ref<CJChartData<'line'>>({
   ]
 })
 
-const categoryData = ref<CJChartData<'doughnut'>>({ labels: [], datasets: [{ label: 'Doanh thu theo danh mục', data: [], backgroundColor: ['#8B4513','#D2691E','#F4A460','#DEB887','#C4A484','#A0522D','#CD853F'] }] })
+const categoryData = ref<CJChartData<'doughnut'>>({ 
+  labels: [], 
+  datasets: [{ 
+    label: 'Doanh thu theo danh mục', 
+    data: [], 
+    backgroundColor: ['#8B4513','#D2691E','#F4A460','#DEB887','#C4A484','#A0522D','#CD853F','#D2B48C','#BC9A6A','#8B7355'] 
+  }] 
+})
 
 const chartOptions = ref({
   responsive: true,
@@ -300,26 +319,61 @@ async function loadAll() {
   // Trend
   try {
     const trend = await orderService.getRevenueTrend(from_date, to_date, 'day')
+    const trendData = (trend as any)?.datasets?.[0]?.data || []
+    const trendLabels = (trend as any)?.labels || []
+    
     chartData.value = {
-      labels: (trend as any)?.labels || [],
-      datasets: (trend as any)?.datasets || [],
+      labels: trendLabels,
+      datasets: [
+        {
+          label: 'Doanh thu',
+          data: trendData,
+          borderColor: '#D4AF37',
+          backgroundColor: 'rgba(212, 175, 55, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4
+        }
+      ]
     }
   } catch (err: any) {
     // eslint-disable-next-line no-console
     console.error('Revenue trend error:', err?.response?.data || err)
     toast.warning('Không tải được biểu đồ doanh thu theo thời gian')
+    // Reset về dữ liệu rỗng
+    chartData.value = {
+      labels: [],
+      datasets: [
+        {
+          label: 'Doanh thu',
+          data: [],
+          borderColor: '#D4AF37',
+          backgroundColor: 'rgba(212, 175, 55, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    }
   }
 
   // By Category (tùy chọn)
   try {
     const byCat = await orderService.getRevenueByCategory(from_date, to_date)
+    const catLabels = (byCat as any)?.labels || []
+    const catData = ((byCat as any)?.datasets?.[0]?.data) || []
+    
+    // Tạo màu sắc động dựa trên số lượng danh mục
+    const colors = ['#8B4513','#D2691E','#F4A460','#DEB887','#C4A484','#A0522D','#CD853F','#D2B48C','#BC9A6A','#8B7355']
+    const backgroundColor = catLabels.map((_: any, index: number) => colors[index % colors.length])
+    
     categoryData.value = {
-      labels: (byCat as any)?.labels || [],
+      labels: catLabels,
       datasets: [
         {
           label: 'Doanh thu theo danh mục',
-          data: ((byCat as any)?.datasets?.[0]?.data) || [],
-          backgroundColor: categoryData.value.datasets?.[0]?.backgroundColor,
+          data: catData,
+          backgroundColor: backgroundColor,
           borderWidth: 0,
         },
       ],
@@ -328,7 +382,15 @@ async function loadAll() {
     // eslint-disable-next-line no-console
     console.error('Revenue by category error:', err?.response?.data || err)
     // Không chặn trang: để rỗng và hiển thị phần còn lại
-    categoryData.value = { labels: [], datasets: [{ label: 'Doanh thu theo danh mục', data: [], backgroundColor: categoryData.value.datasets?.[0]?.backgroundColor, borderWidth: 0 }] }
+    categoryData.value = { 
+      labels: [], 
+      datasets: [{ 
+        label: 'Doanh thu theo danh mục', 
+        data: [], 
+        backgroundColor: ['#8B4513','#D2691E','#F4A460','#DEB887','#C4A484','#A0522D','#CD853F','#D2B48C','#BC9A6A','#8B7355'], 
+        borderWidth: 0 
+      }] 
+    }
   }
 
   // Best selling (tùy chọn)
@@ -347,6 +409,11 @@ async function loadAll() {
     bestSellingProducts.value = []
   }
 }
+
+// Watch for period changes to reload data
+watch([selectedPeriod, chartPeriod], () => {
+  loadAll()
+}, { deep: true })
 
 onMounted(() => {
   loadAll()
