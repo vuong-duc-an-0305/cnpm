@@ -340,7 +340,7 @@ CORS_ALLOWED_ORIGINS = [
    npm install
    ```
 
-## 📞 Hỗ Trợ
+## Hỗ Trợ
 
 Nếu gặp vấn đề, hãy kiểm tra:
 
