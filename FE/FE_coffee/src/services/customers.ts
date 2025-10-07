@@ -36,7 +36,7 @@ export const customerService = {
 
   // Get customer by phone
   getByPhone: (phone: string): Promise<Customer> => {
-    return apiService.get('/customers/by-phone/', { phone })
+    return apiService.get('/customers/by_phone/', { phone })
   },
 
   // Get VIP customers
@@ -46,17 +46,17 @@ export const customerService = {
 
   // Add loyalty points
   addPoints: (id: number, points: number, note?: string): Promise<Customer> => {
-    return apiService.post(`/customers/${id}/add-points/`, { points, note })
+    return apiService.post(`/customers/${id}/add_points/`, { points, note })
   },
 
   // Redeem loyalty points
   redeemPoints: (id: number, points: number, note?: string): Promise<Customer> => {
-    return apiService.post(`/customers/${id}/redeem-points/`, { points, note })
+    return apiService.post(`/customers/${id}/redeem_points/`, { points, note })
   },
 
   // Get customer order history
   getOrderHistory: (id: number): Promise<any[]> => {
-    return apiService.get(`/customers/${id}/order-history/`)
+    return apiService.get(`/customers/${id}/order_history/`)
   },
 
   // Search customers

@@ -162,7 +162,8 @@ const menuItems = computed(() => {
     label: item.label,
     route: item.path,
     icon: getIconComponent(item.icon),
-    badge: item.name === 'orders' ? 5 : undefined, // Hard-coded for demo
+    // badge: có thể gán động từ store sau này; bỏ hard-code
+    badge: undefined,
   }))
 })
 

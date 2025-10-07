@@ -76,7 +76,7 @@
 
       <!-- Order History -->
       <div class="lg:col-span-2">
-        <div class="card p-6">
+        <div class="card p-6" ref="orderHistorySection">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-coffee-800">Lịch sử đơn hàng</h3>
             <BaseButton @click="loadOrderHistory" variant="ghost" size="sm" :disabled="loadingOrders">
@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import {
@@ -182,6 +182,8 @@ const customer = ref<Customer | null>(null)
 const orderHistory = ref<CustomerOrderHistory[]>([])
 const loading = ref(false)
 const loadingOrders = ref(false)
+const hasLoadedOrders = ref(false)
+const orderHistorySection = ref<HTMLElement | null>(null)
 const showEditModal = ref(false)
 const showPointsModal = ref(false)
 
@@ -251,6 +253,7 @@ const loadOrderHistory = async () => {
   if (!customer.value) return
 
   try {
+    hasLoadedOrders.value = true
     loadingOrders.value = true
     orderHistory.value = await customerService.getOrderHistory(customer.value.CustomerID)
   } catch (error: any) {
@@ -276,7 +279,34 @@ const handlePointsSaved = () => {
 }
 
 // Lifecycle
-onMounted(() => {
-  loadCustomer()
+let orderHistoryObserver: IntersectionObserver | null = null
+
+onMounted(async () => {
+  await loadCustomer()
+  // Tải lịch sử ngay khi đã có thông tin khách hàng
+  if (customer.value && !hasLoadedOrders.value) {
+    loadOrderHistory()
+  }
+
+  if ('IntersectionObserver' in window) {
+    orderHistoryObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && !hasLoadedOrders.value && !loadingOrders.value && customer.value) {
+          loadOrderHistory()
+        }
+      })
+    }, { threshold: 0.15 })
+
+    if (orderHistorySection.value) {
+      orderHistoryObserver.observe(orderHistorySection.value)
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  if (orderHistoryObserver) {
+    orderHistoryObserver.disconnect()
+    orderHistoryObserver = null
+  }
 })
 </script>

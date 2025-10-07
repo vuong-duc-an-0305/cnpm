@@ -47,7 +47,23 @@ class KhachHangViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Override queryset với filter parameters"""
         search = self.request.query_params.get('search')
-        return CustomerService.get_all_customers(search=search)
+        membership_level = self.request.query_params.get('membership_level')
+
+        queryset = CustomerService.get_all_customers(search=search)
+
+        # Lọc theo hạng thành viên nếu có
+        if membership_level:
+            level = str(membership_level).strip().upper()
+            if level == 'VIP':
+                queryset = queryset.filter(LoyaltyPoints__gte=1000)
+            elif level == 'GOLD':
+                queryset = queryset.filter(LoyaltyPoints__gte=500, LoyaltyPoints__lt=1000)
+            elif level == 'SILVER':
+                queryset = queryset.filter(LoyaltyPoints__gte=100, LoyaltyPoints__lt=500)
+            elif level == 'BRONZE':
+                queryset = queryset.filter(LoyaltyPoints__lt=100)
+
+        return queryset
     
     def create(self, request, *args, **kwargs):
         """Tạo khách hàng mới"""
