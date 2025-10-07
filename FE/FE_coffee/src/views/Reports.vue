@@ -16,50 +16,16 @@
           <option value="month">Tháng này</option>
           <option value="year">Năm nay</option>
         </select>
-        <BaseButton variant="secondary">
-          <Download class="w-4 h-4 mr-2" />
-          Xuất báo cáo
-        </BaseButton>
+        <button class="btn-secondary inline-flex items-center" @click="openExportModal"><Download class="w-4 h-4 mr-2" />Xuất báo cáo</button>
       </div>
     </div>
 
     <!-- Revenue Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <StatsCard
-        title="Tổng doanh thu"
-        :value="revenueStats.total_revenue"
-        format="currency"
-        :change="revenueStats.revenue_growth"
-        change-type="increase"
-        color="blue"
-        :icon="DollarSign"
-      />
-      <StatsCard
-        title="Đơn hàng"
-        :value="revenueStats.total_orders"
-        :change="revenueStats.orders_growth"
-        change-type="increase"
-        color="green"
-        :icon="ShoppingCart"
-      />
-      <StatsCard
-        title="Giá trị TB"
-        :value="revenueStats.average_order_value"
-        format="currency"
-        :change="revenueStats.avg_growth"
-        change-type="increase"
-        color="purple"
-        :icon="TrendingUp"
-      />
-      <StatsCard
-        title="Lợi nhuận"
-        :value="revenueStats.profit"
-        format="currency"
-        :change="revenueStats.profit_growth"
-        change-type="increase"
-        color="orange"
-        :icon="Activity"
-      />
+      <div class="card p-6"><h3 class="text-coffee-600 text-sm mb-1 font-medium">Tổng doanh thu</h3><p class="text-2xl font-bold text-coffee-700">{{ formatCurrency(revenueStats.total_revenue) }}</p></div>
+      <div class="card p-6"><h3 class="text-coffee-600 text-sm mb-1 font-medium">Đơn hàng</h3><p class="text-2xl font-bold text-coffee-700">{{ revenueStats.total_orders }}</p></div>
+      <div class="card p-6"><h3 class="text-coffee-600 text-sm mb-1 font-medium">Giá trị TB</h3><p class="text-2xl font-bold text-coffee-700">{{ formatCurrency(revenueStats.average_order_value) }}</p></div>
+      <div class="card p-6"><h3 class="text-coffee-600 text-sm mb-1 font-medium">Lợi nhuận</h3><p class="text-2xl font-bold text-coffee-700">—</p></div>
     </div>
 
     <!-- Charts Section -->
@@ -160,11 +126,32 @@
         </div>
       </div>
     </div>
+
+    <!-- Export modal -->
+    <div v-if="showExport" class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold text-coffee-800 mb-4">Xuất báo cáo</h3>
+        <label class="block text-sm text-coffee-600 mb-1">Chọn khoảng thời gian</label>
+        <select
+          v-model="exportPeriod"
+          class="w-full px-3 py-2 bg-white border border-coffee-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-coffee-500"
+        >
+          <option value="today">Hôm nay</option>
+          <option value="week">Tuần này</option>
+          <option value="month">Tháng này</option>
+          <option value="year">Năm nay</option>
+        </select>
+        <div class="flex justify-end gap-3 mt-4">
+          <button class="btn-secondary" @click="closeExportModal">Hủy</button>
+          <button class="btn-primary" @click="() => { closeExportModal(); exportExcel(); }">Xuất</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useToast } from 'vue-toastification'
 import {
   DollarSign,
@@ -175,39 +162,50 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-vue-next'
-import StatsCard from '@/components/common/StatsCard.vue'
-import BaseButton from '@/components/common/BaseButton.vue'
-import LineChart from '@/components/charts/LineChart.vue'
-import DoughnutChart from '@/components/charts/DoughnutChart.vue'
-import type { ChartData } from '@/types'
+import { defineAsyncComponent } from 'vue'
+const LineChart = defineAsyncComponent(() => import('../components/charts/LineChart.vue'))
+const DoughnutChart = defineAsyncComponent(() => import('../components/charts/DoughnutChart.vue'))
+// Types are available via chart.js runtime; fallback to any to avoid TS error if missing types
+type CJChartData<TType extends string> = any
 
 const toast = useToast()
 const selectedPeriod = ref('month')
+const exportPeriod = ref('month')
 const chartPeriod = ref('7')
 
-// Mock revenue stats
+// Helpers to build date range
+function formatDate(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function getRange(period: string) {
+  const to = new Date()
+  const from = new Date()
+  if (period === 'today') {
+    // no change
+  } else if (period === 'week') {
+    from.setDate(to.getDate() - 6)
+  } else if (period === 'month') {
+    from.setMonth(to.getMonth() - 1)
+  } else if (period === 'year') {
+    from.setFullYear(to.getFullYear() - 1)
+  }
+  return { from_date: formatDate(from), to_date: formatDate(to) }
+}
+
 const revenueStats = ref({
-  total_revenue: '125000000',
-  total_orders: 1250,
-  average_order_value: '100000',
-  profit: '37500000',
-  revenue_growth: 15.3,
-  orders_growth: 8.2,
-  avg_growth: 5.7,
-  profit_growth: 12.3
+  total_revenue: '0',
+  total_orders: 0,
+  average_order_value: '0',
 })
 
-// Mock best selling products
-const bestSellingProducts = ref([
-  { name: 'Cà phê đen', sold: 89, revenue: 4005000, trend: 'up' },
-  { name: 'Cà phê sữa', sold: 76, revenue: 4180000, trend: 'up' },
-  { name: 'Trà sữa truyền thống', sold: 67, revenue: 4355000, trend: 'up' },
-  { name: 'Trà đào cam sả', sold: 56, revenue: 3080000, trend: 'down' },
-  { name: 'Bạc xỉu', sold: 54, revenue: 2700000, trend: 'up' }
-])
+const bestSellingProducts = ref<Array<{ name: string; sold: number; revenue: number; trend: 'up'|'down' }>>([])
 
-// Mock chart data
-const chartData = ref<ChartData>({
+// Chart data (runtime)
+const chartData = ref<CJChartData<'line'>>({
   labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
   datasets: [
     {
@@ -222,21 +220,7 @@ const chartData = ref<ChartData>({
   ]
 })
 
-const categoryData = ref<ChartData>({
-  labels: ['Cà phê', 'Trà sữa', 'Sinh tố', 'Đồ ăn'],
-  datasets: [
-    {
-      data: [15200000, 12800000, 7600000, 4400000],
-      backgroundColor: [
-        '#8B4513',
-        '#D2691E',
-        '#F4A460',
-        '#DEB887'
-      ],
-      borderWidth: 0
-    }
-  ]
-})
+const categoryData = ref<CJChartData<'doughnut'>>({ labels: [], datasets: [{ label: 'Doanh thu theo danh mục', data: [], backgroundColor: ['#8B4513','#D2691E','#F4A460','#DEB887','#C4A484','#A0522D','#CD853F'] }] })
 
 const chartOptions = ref({
   responsive: true,
@@ -292,7 +276,111 @@ const getRankClasses = (index: number): string => {
   return 'bg-gray-300'
 }
 
+import { orderService } from '../services/orders'
+import { apiService } from '../services/api'
+
+async function loadAll() {
+  const { from_date, to_date } = getRange(selectedPeriod.value)
+
+  // Stats
+  try {
+    const stats = await orderService.getRevenueStats(from_date, to_date)
+    const sum = (stats as any)?.summary || {}
+    revenueStats.value = {
+      total_revenue: String(sum.total_revenue || '0'),
+      total_orders: Number(sum.total_orders || 0),
+      average_order_value: String(sum.average_order_value || '0'),
+    }
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('Revenue stats error:', err?.response?.data || err)
+    toast.error('Không tải được tổng quan doanh thu')
+  }
+
+  // Trend
+  try {
+    const trend = await orderService.getRevenueTrend(from_date, to_date, 'day')
+    chartData.value = {
+      labels: (trend as any)?.labels || [],
+      datasets: (trend as any)?.datasets || [],
+    }
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('Revenue trend error:', err?.response?.data || err)
+    toast.warning('Không tải được biểu đồ doanh thu theo thời gian')
+  }
+
+  // By Category (tùy chọn)
+  try {
+    const byCat = await orderService.getRevenueByCategory(from_date, to_date)
+    categoryData.value = {
+      labels: (byCat as any)?.labels || [],
+      datasets: [
+        {
+          label: 'Doanh thu theo danh mục',
+          data: ((byCat as any)?.datasets?.[0]?.data) || [],
+          backgroundColor: categoryData.value.datasets?.[0]?.backgroundColor,
+          borderWidth: 0,
+        },
+      ],
+    }
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('Revenue by category error:', err?.response?.data || err)
+    // Không chặn trang: để rỗng và hiển thị phần còn lại
+    categoryData.value = { labels: [], datasets: [{ label: 'Doanh thu theo danh mục', data: [], backgroundColor: categoryData.value.datasets?.[0]?.backgroundColor, borderWidth: 0 }] }
+  }
+
+  // Best selling (tùy chọn)
+  try {
+    const best = await orderService.getBestSelling(from_date, to_date, 5)
+    const list = (best as any)?.best_selling_products || []
+    bestSellingProducts.value = list.map((x: any) => ({
+      name: x.ProductID__ProductName || `SP #${x.ProductID}`,
+      sold: Number(x.total_quantity || 0),
+      revenue: Number(x.total_revenue || 0),
+      trend: 'up',
+    }))
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('Best selling error:', err?.response?.data || err)
+    bestSellingProducts.value = []
+  }
+}
+
 onMounted(() => {
-  toast.info('Báo cáo đang sử dụng dữ liệu mẫu')
+  loadAll()
+  const handler = () => loadAll()
+  window.addEventListener('reports:refresh', handler)
+  ;(window as any).__reportsRefreshHandler = handler
 })
+
+onBeforeUnmount(() => {
+  const handler = (window as any).__reportsRefreshHandler
+  if (handler) window.removeEventListener('reports:refresh', handler)
+})
+
+async function exportExcel() {
+  try {
+    const { from_date, to_date } = getRange(exportPeriod.value)
+    const blob = await apiService.download('/reports/export.xlsx', { from_date, to_date, type: 'revenue' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bao_cao_${from_date}_${to_date}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('Export excel error:', err?.response?.data || err)
+    toast.error('Xuất báo cáo thất bại')
+  }
+}
+
+// Export modal state
+const showExport = ref(false)
+function openExportModal() { showExport.value = true }
+function closeExportModal() { showExport.value = false }
 </script>
