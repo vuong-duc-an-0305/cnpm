@@ -10,8 +10,8 @@ import Chart from 'chart.js/auto'
 import type { ChartData, ChartOptions } from 'chart.js'
 
 interface Props {
-  data: ChartData<'line'>
-  options?: ChartOptions<'line'>
+  data: ChartData<'bar'>
+  options?: ChartOptions<'bar'>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,7 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const chartRef = ref<HTMLCanvasElement>()
-let chart: Chart<'line'> | null = null
+let chart: Chart<'bar'> | null = null
 
 const createChart = async () => {
   if (!chartRef.value) return
@@ -58,7 +58,7 @@ const createChart = async () => {
   }
 
   chart = new Chart(chartRef.value, {
-    type: 'line',
+    type: 'bar',
     data: props.data,
     options: props.options
   })

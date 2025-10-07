@@ -12,7 +12,7 @@ export const recipeService = {
 
   // Get recipes by product
   getByProduct: (productId: number): Promise<Recipe[]> => {
-    return apiService.get('/recipes/by-product/', { product_id: productId })
+    return apiService.get('/recipes/by_product/', { product_id: productId })
   },
 
   // Create new recipe
@@ -22,7 +22,7 @@ export const recipeService = {
 
   // Create multiple recipes (bulk create)
   bulkCreate: (productId: number, ingredients: Omit<RecipeForm, 'ProductID'>[]): Promise<Recipe[]> => {
-    return apiService.post('/recipes/bulk-create/', {
+    return apiService.post('/recipes/bulk_create/', {
       ProductID: productId,
       ingredients
     })
@@ -30,7 +30,8 @@ export const recipeService = {
 
   // Delete recipes by product
   deleteByProduct: (productId: number): Promise<void> => {
-    return apiService.delete('/recipes/delete-by-product/', { params: { product_id: productId } })
+    // Using GET params style via apiService.get for delete action requiring query param
+    return apiService.delete(`/recipes/delete_by_product/?product_id=${productId}`)
   },
 
   // Update recipe

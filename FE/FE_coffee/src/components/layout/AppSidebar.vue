@@ -47,8 +47,8 @@
             {{ userInitials }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-white truncate">{{ user?.firstName }} {{ user?.lastName }}</p>
-            <p class="text-xs text-coffee-300 truncate">{{ user?.email }}</p>
+            <p class="text-sm font-semibold text-white truncate">{{ authUser.name }}</p>
+            <p class="text-xs text-coffee-300 truncate">{{ authUser.role === 'admin' ? 'Administrator' : 'Thu ngân' }}</p>
           </div>
           <button
             @click="toggleUserMenu"
@@ -115,7 +115,8 @@ import {
   Settings,
   LogOut
 } from 'lucide-vue-next'
-import type { User as UserType } from '@/types'
+import type { User as UserType } from '../../types'
+import { useAuth } from '../../composables/useAuth'
 
 interface MenuItem {
   id: string
@@ -145,58 +146,38 @@ const emit = defineEmits<{
 const route = useRoute()
 const router = useRouter()
 const showUserMenu = ref(false)
+const { menuItems: authMenuItems, user: authUser } = useAuth()
 
-const menuItems: MenuItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Tổng quan',
-    route: '/dashboard',
-    icon: Activity
-  },
-  {
-    id: 'orders',
-    label: 'Đơn hàng',
-    route: '/orders',
-    icon: ShoppingCart,
-    badge: 5 // Hard-coded for demo
-  },
-  {
-    id: 'products',
-    label: 'Sản phẩm',
-    route: '/products',
-    icon: Package
-  },
-  {
-    id: 'customers',
-    label: 'Khách hàng',
-    route: '/customers',
-    icon: Users
-  },
-  {
-    id: 'inventory',
-    label: 'Kho nguyên liệu',
-    route: '/inventory',
-    icon: Warehouse
-  },
-  {
-    id: 'employees',
-    label: 'Nhân viên',
-    route: '/employees',
-    icon: UserCheck
-  },
-  {
-    id: 'reports',
-    label: 'Báo cáo',
-    route: '/reports',
-    icon: TrendingUp
+// Sử dụng menu items từ auth composable
+const menuItems = computed(() => {
+  return authMenuItems.value.map(item => ({
+    id: item.name,
+    label: item.label,
+    route: item.path,
+    icon: getIconComponent(item.icon),
+    badge: item.name === 'orders' ? 5 : undefined // Hard-coded for demo
+  }))
+})
+
+// Helper function để get icon component
+const getIconComponent = (iconName: string) => {
+  const iconMap: Record<string, any> = {
+    'BarChart3': Activity,
+    'ShoppingCart': ShoppingCart,
+    'Package': Package,
+    'Users': Users,
+    'UserCheck': UserCheck,
+    'Warehouse': Warehouse,
+    'FileText': TrendingUp
   }
-]
+  return iconMap[iconName] || Activity
+}
 
 const userInitials = computed(() => {
-  if (!props.user) return 'A'
-  const firstName = props.user.firstName || ''
-  const lastName = props.user.lastName || ''
-  return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || 'A'
+  if (authUser.value.name) {
+    return authUser.value.name.charAt(0).toUpperCase()
+  }
+  return 'A'
 })
 
 const isActiveRoute = (routePath: string): boolean => {

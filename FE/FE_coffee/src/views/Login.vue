@@ -61,11 +61,10 @@
         
         <!-- Demo Credentials -->
         <div class="mt-6 p-4 bg-coffee-50 rounded-xl">
-          <h3 class="text-sm font-semibold text-coffee-700 mb-2">Tài khoản demo:</h3>
+          <h3 class="text-sm font-semibold text-coffee-700 mb-2">Tài khoản hệ thống:</h3>
           <div class="space-y-1 text-xs text-coffee-600">
-            <p><strong>Admin:</strong> admin / admin123</p>
-            <p><strong>Thu ngân:</strong> cashier / cashier123</p>
-            <p><strong>Quản lý:</strong> manager / manager123</p>
+            <p><strong>Admin:</strong> admin / admin123 (Full quyền)</p>
+            <p><strong>Thu ngân:</strong> cashier / cashier123 (Chỉ quản lý đơn hàng)</p>
           </div>
         </div>
       </div>
@@ -122,22 +121,28 @@ const handleLogin = async () => {
     // For demo purposes, we'll simulate login
     await new Promise(resolve => setTimeout(resolve, 1500))
     
-    // Demo authentication logic
+    // Authentication logic với 2 tài khoản cố định
     const validCredentials = {
       'admin': 'admin123',
-      'cashier': 'cashier123',
-      'manager': 'manager123'
+      'cashier': 'cashier123'
     }
     
     if (validCredentials[form.username as keyof typeof validCredentials] === form.password) {
-      // Store auth token
+      // Store auth token và role
       localStorage.setItem('auth_token', 'demo-token-' + Date.now())
       localStorage.setItem('user_role', form.username)
+      localStorage.setItem('user_name', form.username === 'admin' ? 'Administrator' : 'Thu ngân')
       
       toast.success('Đăng nhập thành công!')
       
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Redirect dựa trên role
+      if (form.username === 'cashier') {
+        // Cashier redirect trực tiếp đến orders
+        router.push('/orders')
+      } else {
+        // Admin redirect đến dashboard
+        router.push('/dashboard')
+      }
     } else {
       toast.error('Tên đăng nhập hoặc mật khẩu không đúng')
     }

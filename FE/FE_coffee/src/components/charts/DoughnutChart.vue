@@ -6,8 +6,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Chart } from 'chart.js'
-import 'chart.js/auto'
+import Chart from 'chart.js/auto'
 import type { ChartData, ChartOptions } from 'chart.js'
 
 interface Props {

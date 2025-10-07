@@ -3,7 +3,7 @@ Service Layer - Business Logic cho Hóa đơn và Chi tiết đơn hàng
 """
 from django.db import transaction
 from django.db.models import Q, Count, Sum, Avg, F
-from django.db.models.functions import TruncDate, Coalesce
+from django.db.models.functions import TruncDate, TruncDay, TruncWeek, TruncMonth, TruncYear, Coalesce
 from django.db.models import Value, DecimalField
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ from .models import HoaDon, ChiTietDonHang
 from api.products.models import SanPham
 from api.customers.services import CustomerService
 from api.ingredients.services import IngredientService
+from api.ingredients.models import NguyenLieu
 from api.recipes.models import CongThuc
 
 
@@ -97,36 +98,26 @@ class OrderService:
             if not customer:
                 return False, "Khách hàng không tồn tại", []
         
-        # Kiểm tra sản phẩm và tính toán
+        # Kiểm tra sản phẩm và tính toán (chưa trừ nguyên liệu)
         order_details = []
         total_amount = Decimal('0')
         errors = []
-        
+
         for item in items_data:
             try:
                 product = SanPham.objects.get(ProductID=item['ProductID'])
-                
+
                 # Kiểm tra sản phẩm còn hàng không
                 if product.Status != 1:
                     errors.append(f"Sản phẩm '{product.ProductName}' hiện không có sẵn")
                     continue
-                
-                # Kiểm tra nguyên liệu đủ không
-                is_available, missing = OrderService._check_ingredients_for_product(
-                    product.ProductID,
-                    item['Quantity']
-                )
-                
-                if not is_available:
-                    errors.append(f"Không đủ nguyên liệu cho '{product.ProductName}': {missing}")
-                    continue
-                
+
                 # Tính toán
                 unit_price = product.Price
                 quantity = item['Quantity']
                 subtotal = unit_price * quantity
                 total_amount += subtotal
-                
+
                 order_details.append({
                     'product': product,
                     'quantity': quantity,
@@ -134,7 +125,7 @@ class OrderService:
                     'subtotal': subtotal,
                     'topping_note': item.get('ToppingNote', '')
                 })
-                
+
             except SanPham.DoesNotExist:
                 errors.append(f"Sản phẩm ID {item['ProductID']} không tồn tại")
         
@@ -144,6 +135,11 @@ class OrderService:
         if not order_details:
             return False, "Không có sản phẩm hợp lệ trong đơn hàng", []
         
+        # Kiểm tra nguyên liệu đủ cho toàn bộ đơn hàng
+        is_available, missing = OrderService._check_ingredients_for_items(order_details)
+        if not is_available:
+            return False, "Không đủ nguyên liệu cho đơn hàng", [missing]
+
         # Tính giảm giá và thành tiền
         # Đảm bảo discount là Decimal
         discount = order_data.get('Discount', Decimal('0'))
@@ -186,59 +182,87 @@ class OrderService:
         return True, order, []
     
     @staticmethod
-    def _check_ingredients_for_product(product_id, quantity):
-        """Kiểm tra nguyên liệu có đủ không"""
-        recipes = CongThuc.objects.filter(ProductID=product_id).select_related('IngredientID')
-        
-        missing = []
+    def _check_ingredients_for_items(order_details):
+        """Kiểm tra nguyên liệu đủ cho toàn bộ đơn hàng theo tổng nhu cầu.
+
+        order_details: list dict đã chuẩn hóa gồm keys: product, quantity
+        """
+        # Tổng hợp nhu cầu theo nguyên liệu
+        ingredient_required = {}
+        product_ids = [d['product'].ProductID for d in order_details]
+        recipes = CongThuc.objects.filter(ProductID__in=product_ids).select_related('IngredientID')
+        product_to_qty = {d['product'].ProductID: d['quantity'] for d in order_details}
+
         for recipe in recipes:
-            required = recipe.Quantity * quantity
-            available = recipe.IngredientID.QuantityInStock
-            
-            if available < required:
-                missing.append(
-                    f"{recipe.IngredientID.IngredientName} (cần {required}, có {available})"
-                )
-        
-        return len(missing) == 0, ', '.join(missing) if missing else ''
+            requested_qty = product_to_qty.get(recipe.ProductID_id, 0)
+            if not requested_qty:
+                continue
+            need = recipe.Quantity * requested_qty
+            ing_id = recipe.IngredientID_id
+            ingredient_required[ing_id] = ingredient_required.get(ing_id, Decimal('0')) + need
+
+        # Đối chiếu tồn kho
+        if not ingredient_required:
+            return True, ''
+
+        ingredients = NguyenLieu.objects.filter(pk__in=ingredient_required.keys())
+        missing_msgs = []
+        for ing in ingredients:
+            required = ingredient_required.get(ing.pk, Decimal('0'))
+            if ing.QuantityInStock < required:
+                missing_msgs.append(f"{ing.IngredientName} (cần {required}, có {ing.QuantityInStock})")
+
+        return len(missing_msgs) == 0, ', '.join(missing_msgs) if missing_msgs else ''
     
     @staticmethod
     @transaction.atomic
     def _reduce_ingredients_for_order(order_id):
-        """Trừ nguyên liệu khi tạo đơn hàng"""
+        """Trừ nguyên liệu khi tạo đơn hàng (gộp theo nguyên liệu, có khóa hàng)"""
         order = OrderService.get_order_by_id(order_id)
         if not order:
             return
-        
+
+        # Tính tổng nhu cầu theo nguyên liệu
+        ingredient_required = {}
         for detail in order.chitietdonhang_set.all():
-            recipes = CongThuc.objects.filter(
-                ProductID=detail.ProductID
-            ).select_related('IngredientID')
-            
+            recipes = CongThuc.objects.filter(ProductID=detail.ProductID).select_related('IngredientID')
             for recipe in recipes:
-                quantity_to_reduce = recipe.Quantity * detail.Quantity
-                ingredient = recipe.IngredientID
-                ingredient.QuantityInStock -= quantity_to_reduce
-                ingredient.save()
+                need = recipe.Quantity * detail.Quantity
+                ing_id = recipe.IngredientID_id
+                ingredient_required[ing_id] = ingredient_required.get(ing_id, Decimal('0')) + need
+
+        if not ingredient_required:
+            return
+
+        # Khóa các bản ghi nguyên liệu để trừ an toàn
+        ingredients = NguyenLieu.objects.select_for_update().filter(pk__in=ingredient_required.keys())
+        for ing in ingredients:
+            ing.QuantityInStock -= ingredient_required.get(ing.pk, Decimal('0'))
+            ing.save()
     
     @staticmethod
     @transaction.atomic
     def _restore_ingredients_for_order(order_id):
-        """Hoàn nguyên liệu khi hủy đơn hàng"""
+        """Hoàn nguyên liệu khi hủy đơn hàng (gộp theo nguyên liệu, có khóa hàng)"""
         order = OrderService.get_order_by_id(order_id)
         if not order:
             return
-        
+
+        ingredient_restore = {}
         for detail in order.chitietdonhang_set.all():
-            recipes = CongThuc.objects.filter(
-                ProductID=detail.ProductID
-            ).select_related('IngredientID')
-            
+            recipes = CongThuc.objects.filter(ProductID=detail.ProductID).select_related('IngredientID')
             for recipe in recipes:
-                quantity_to_restore = recipe.Quantity * detail.Quantity
-                ingredient = recipe.IngredientID
-                ingredient.QuantityInStock += quantity_to_restore
-                ingredient.save()
+                qty = recipe.Quantity * detail.Quantity
+                ing_id = recipe.IngredientID_id
+                ingredient_restore[ing_id] = ingredient_restore.get(ing_id, Decimal('0')) + qty
+
+        if not ingredient_restore:
+            return
+
+        ingredients = NguyenLieu.objects.select_for_update().filter(pk__in=ingredient_restore.keys())
+        for ing in ingredients:
+            ing.QuantityInStock += ingredient_restore.get(ing.pk, Decimal('0'))
+            ing.save()
     
     @staticmethod
     def update_order_status(order_id, new_status):
@@ -334,3 +358,74 @@ class OrderService:
         ).order_by('-total_quantity')[:limit]
         
         return list(best_selling)
+
+    @staticmethod
+    def get_revenue_trend(from_date=None, to_date=None, interval: str = 'day'):
+        """Lấy dữ liệu doanh thu theo thời gian theo interval day|week|month"""
+        queryset = HoaDon.objects.filter(Status='COMPLETED')
+        if from_date:
+            queryset = queryset.filter(OrderDate__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(OrderDate__lt=to_date + timedelta(days=1))
+
+        interval = (interval or 'day').lower()
+        if interval == 'year':
+            trunc_fn = TruncYear
+            fmt = '%Y'
+        elif interval == 'month':
+            trunc_fn = TruncMonth
+            fmt = '%Y-%m'
+        elif interval == 'week':
+            trunc_fn = TruncWeek
+            fmt = '%Y-W%W'
+        else:
+            trunc_fn = TruncDay
+            fmt = '%Y-%m-%d'
+
+        series = queryset.annotate(period=trunc_fn('OrderDate')).values('period').annotate(
+            revenue=Coalesce(Sum('FinalAmount'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)))
+        ).order_by('period')
+
+        labels = [item['period'].strftime(fmt) for item in series]
+        data = [item['revenue'] for item in series]
+
+        return {
+            'labels': labels,
+            'datasets': [
+                {
+                    'label': 'Revenue',
+                    'data': data,
+                }
+            ],
+            'interval': interval,
+        }
+
+    @staticmethod
+    def get_revenue_by_category(from_date=None, to_date=None):
+        """Tổng doanh thu theo danh mục sản phẩm trong khoảng thời gian"""
+        queryset = ChiTietDonHang.objects.filter(
+            OrderID__Status='COMPLETED'
+        )
+        if from_date:
+            queryset = queryset.filter(OrderID__OrderDate__gte=from_date)
+        if to_date:
+            queryset = queryset.filter(OrderID__OrderDate__lt=to_date + timedelta(days=1))
+
+        by_cat = queryset.values(
+            'ProductID__CategoryID__CategoryName'
+        ).annotate(
+            revenue=Coalesce(Sum('Subtotal'), Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)))
+        ).order_by('-revenue')
+
+        labels = [item['ProductID__CategoryID__CategoryName'] or 'Khác' for item in by_cat]
+        data = [item['revenue'] for item in by_cat]
+
+        return {
+            'labels': labels,
+            'datasets': [
+                {
+                    'label': 'Revenue by Category',
+                    'data': data,
+                }
+            ]
+        }

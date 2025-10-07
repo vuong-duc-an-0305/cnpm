@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useToast } from 'vue-toastification'
 
 // Create axios instance
@@ -13,11 +13,19 @@ const api: AxiosInstance = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
+    console.log('📤 Making API Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      params: config.params
+    })
+    
     // Add auth token if available
     const token = localStorage.getItem('auth_token')
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
+    if (token) {
+      config.headers = config.headers || {}
+      ;(config.headers as any).Authorization = `Bearer ${token}`
     }
     
     // Add timestamp to prevent caching
@@ -38,6 +46,12 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response: AxiosResponse) => {
+    console.log('🌐 API Request:', {
+      method: response.config.method?.toUpperCase(),
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    })
     return response
   },
   (error) => {
@@ -111,6 +125,11 @@ export const apiService = {
   // DELETE request
   delete: <T = any>(url: string): Promise<T> => {
     return api.delete(url).then(response => response.data)
+  },
+
+  // Download file (blob)
+  download: (url: string, params?: any): Promise<Blob> => {
+    return api.get(url, { params, responseType: 'blob' }).then(res => res.data as Blob)
   },
 
   // Upload file

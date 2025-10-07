@@ -29,17 +29,39 @@ export const inventoryService = {
 
   // Get low stock ingredients
   getLowStock: (): Promise<Ingredient[]> => {
-    return apiService.get('/ingredients/low-stock/')
+    // BE chuẩn dùng low_stock; fallback low-stock nếu cấu hình khác
+    return apiService.get('/ingredients/low_stock/').catch(async (err) => {
+      if (err?.response?.status === 404) {
+        return apiService.get('/ingredients/low-stock/')
+      }
+      throw err
+    })
   },
 
   // Add stock to ingredient
   addStock: (id: number, quantity: number, note?: string): Promise<Ingredient> => {
-    return apiService.post(`/ingredients/${id}/add-stock/`, { quantity, note })
+    // BE chuẩn dùng add_stock; fallback add-stock nếu cấu hình khác
+    return apiService
+      .post(`/ingredients/${id}/add_stock/`, { quantity, note })
+      .catch(async (err) => {
+        if (err?.response?.status === 404) {
+          return apiService.post(`/ingredients/${id}/add-stock/`, { quantity, note })
+        }
+        throw err
+      })
   },
 
   // Reduce stock from ingredient
   reduceStock: (id: number, quantity: number, note?: string): Promise<Ingredient> => {
-    return apiService.post(`/ingredients/${id}/reduce-stock/`, { quantity, note })
+    // BE chuẩn dùng reduce_stock; fallback reduce-stock nếu cấu hình khác
+    return apiService
+      .post(`/ingredients/${id}/reduce_stock/`, { quantity, note })
+      .catch(async (err) => {
+        if (err?.response?.status === 404) {
+          return apiService.post(`/ingredients/${id}/reduce-stock/`, { quantity, note })
+        }
+        throw err
+      })
   },
 
   // Search ingredients

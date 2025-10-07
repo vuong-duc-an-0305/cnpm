@@ -7,7 +7,7 @@ from .models import NguyenLieu
 
 @admin.register(NguyenLieu)
 class NguyenLieuAdmin(admin.ModelAdmin):
-    list_display = ['IngredientID', 'IngredientName', 'QuantityInStock', 'MinQuantity', 'is_low_stock']
+    list_display = ['IngredientID', 'IngredientName', 'Unit', 'QuantityInStock', 'MinQuantity', 'is_low_stock']
     search_fields = ['IngredientName']
     ordering = ['IngredientName']
     list_per_page = 20

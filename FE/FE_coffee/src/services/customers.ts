@@ -4,7 +4,14 @@ import type { Customer, CustomerForm, PaginatedResponse, FilterOptions } from '@
 export const customerService = {
   // Get all customers with filters
   getAll: (filters?: FilterOptions): Promise<Customer[]> => {
-    return apiService.get('/customers/', filters)
+    console.log('🔍 Calling API: GET /customers/ with filters:', filters)
+    return apiService.get('/customers/', filters).then(response => {
+      console.log('✅ API Response:', response)
+      return response
+    }).catch(error => {
+      console.error('❌ API Error:', error)
+      throw error
+    })
   },
 
   // Get customer by ID

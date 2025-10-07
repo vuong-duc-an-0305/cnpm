@@ -1,7 +1,6 @@
 import './style.css'
 
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import Toast from 'vue-toastification'
 import type { PluginOptions } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
@@ -11,7 +10,6 @@ import router from './router'
 
 const app = createApp(App)
 
-app.use(createPinia())
 app.use(router)
 
 // Configure toast plugin

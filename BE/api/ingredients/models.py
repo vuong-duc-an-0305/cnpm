@@ -8,6 +8,7 @@ class NguyenLieu(models.Model):
     """Model cho nguyên liệu (Ingredient)"""
     IngredientID = models.AutoField(primary_key=True)
     IngredientName = models.CharField(max_length=200, verbose_name='Tên nguyên liệu')
+    Unit = models.CharField(max_length=20, default='', blank=True, verbose_name='Đơn vị')
     QuantityInStock = models.DecimalField(
         max_digits=12,
         decimal_places=3,

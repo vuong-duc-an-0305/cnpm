@@ -53,18 +53,29 @@ export const orderService = {
 
   // Get revenue statistics
   getRevenueStats: (fromDate?: string, toDate?: string): Promise<RevenueStats> => {
-    return apiService.get('/orders/revenue-stats/', { from_date: fromDate, to_date: toDate })
+    // Prefer snake_case per BE docs, fallback kebab-case
+    return apiService
+      .get('/orders/revenue_stats/', { from_date: fromDate, to_date: toDate })
+      .catch(async (err) => {
+        if (err?.response?.status === 404) {
+          return apiService.get('/orders/revenue-stats/', { from_date: fromDate, to_date: toDate })
+        }
+        throw err
+      })
   },
 
   // Get best selling products
   getBestSelling: (fromDate?: string, toDate?: string, limit?: number): Promise<{
     best_selling_products: BestSellingProduct[];
   }> => {
-    return apiService.get('/orders/best-selling/', { 
-      from_date: fromDate, 
-      to_date: toDate, 
-      limit: limit || 10 
-    })
+    return apiService
+      .get('/orders/best_selling/', { from_date: fromDate, to_date: toDate, limit: limit || 10 })
+      .catch(async (err) => {
+        if (err?.response?.status === 404) {
+          return apiService.get('/orders/best-selling/', { from_date: fromDate, to_date: toDate, limit: limit || 10 })
+        }
+        throw err
+      })
   },
 
   // Get order details
@@ -78,5 +89,34 @@ export const orderService = {
   // Search orders
   search: (query: string): Promise<Order[]> => {
     return apiService.get('/orders/', { search: query })
+  },
+
+  // Revenue trend over time
+  getRevenueTrend: (fromDate?: string, toDate?: string, interval?: 'day'|'week'|'month'): Promise<{
+    labels: string[];
+    datasets: Array<{ label: string; data: number[] }>;
+    interval: string;
+  }> => {
+    return apiService.get('/orders/revenue_trend/', { from_date: fromDate, to_date: toDate, interval: interval || 'day' })
+      .catch(async (err) => {
+        if (err?.response?.status === 404) {
+          return apiService.get('/orders/revenue-trend/', { from_date: fromDate, to_date: toDate, interval: interval || 'day' })
+        }
+        throw err
+      })
+  },
+
+  // Revenue by category
+  getRevenueByCategory: (fromDate?: string, toDate?: string): Promise<{
+    labels: string[];
+    datasets: Array<{ label: string; data: number[] }>;
+  }> => {
+    return apiService.get('/orders/revenue_by_category/', { from_date: fromDate, to_date: toDate })
+      .catch(async (err) => {
+        if (err?.response?.status === 404) {
+          return apiService.get('/orders/revenue-by-category/', { from_date: fromDate, to_date: toDate })
+        }
+        throw err
+      })
   },
 }

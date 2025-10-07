@@ -46,6 +46,15 @@ export interface Product {
   category_name?: string;
   Status: number;
   status_display?: string;
+  is_available?: boolean;
+  ingredients?: Array<{
+    IngredientID: number;
+    IngredientName: string;
+    IngredientUnit?: string; // đơn vị của nguyên liệu trong kho
+    Quantity: string; // định mức/1 sản phẩm
+    Unit: string;
+    QuantityInStock: string; // tồn hiện tại
+  }>;
 }
 
 export interface ProductForm {
@@ -60,6 +69,7 @@ export interface ProductForm {
 export interface Ingredient {
   IngredientID: number;
   IngredientName: string;
+  Unit?: string;
   QuantityInStock: string;
   MinQuantity: string;
   is_low_stock?: boolean;
@@ -68,6 +78,7 @@ export interface Ingredient {
 
 export interface IngredientForm {
   IngredientName: string;
+  Unit?: string;
   QuantityInStock: number;
   MinQuantity: number;
 }
@@ -96,16 +107,31 @@ export interface Customer {
   FullName: string;
   PhoneNumber: string;
   Email?: string;
+  RegisterDate?: string;
   LoyaltyPoints: number;
   membership_level?: string;
   total_orders?: number;
-  total_spent?: number;
+  total_spent?: string;
 }
 
 export interface CustomerForm {
   FullName: string;
   PhoneNumber: string;
   Email?: string;
+}
+
+export interface CustomerPointsForm {
+  points: number;
+  note?: string;
+}
+
+export interface CustomerOrderHistory {
+  OrderID: number;
+  OrderDate: string;
+  TotalAmount: string;
+  Status: string;
+  status_display?: string;
+  items_count?: number;
 }
 
 // Employee Types
@@ -207,6 +233,8 @@ export interface DashboardStats {
   total_products: number;
   revenue_growth: number;
   orders_growth: number;
+  customers_growth: number;
+  products_growth: number;
 }
 
 export interface RevenueStats {

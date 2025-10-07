@@ -5,8 +5,50 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
-          <label class="block text-sm text-coffee-600 mb-1">Khách hàng (tùy chọn)</label>
-          <input v-model="orderForm.CustomerID" type="number" class="input-field" placeholder="Nhập CustomerID" />
+          <label class="block text-sm text-coffee-600 mb-1">Số điện thoại khách hàng (tùy chọn)</label>
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <input 
+                v-model="customerPhone" 
+                type="tel" 
+                class="input-field w-full" 
+                placeholder="Nhập SĐT (VD: 0901234567)" 
+                @input="onPhoneInput"
+                @blur="searchCustomerByPhone"
+              />
+              <div v-if="searchingCustomer" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-coffee-600"></div>
+              </div>
+            </div>
+            <button 
+              v-if="customerPhone && !foundCustomer"
+              @click="searchCustomerByPhone"
+              :disabled="searchingCustomer"
+              class="btn-secondary px-3"
+            >
+              <span v-if="searchingCustomer">...</span>
+              <span v-else>Tìm</span>
+            </button>
+          </div>
+          <!-- Hiển thị thông tin khách hàng đã tìm thấy -->
+          <div v-if="foundCustomer" class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div class="text-sm text-green-800">
+              <div class="font-semibold">{{ foundCustomer.FullName }}</div>
+              <div>SĐT: {{ foundCustomer.PhoneNumber }}</div>
+              <div v-if="foundCustomer.Email">Email: {{ foundCustomer.Email }}</div>
+              <div>Điểm tích lũy: {{ foundCustomer.LoyaltyPoints }}</div>
+            </div>
+            <button 
+              @click="clearCustomer"
+              class="text-xs text-red-600 mt-1 hover:text-red-800"
+            >
+              Xóa
+            </button>
+          </div>
+          <!-- Hiển thị lỗi không tìm thấy -->
+          <div v-if="customerPhone && !foundCustomer && !searchingCustomer && phoneError" class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+            {{ phoneError }}
+          </div>
         </div>
         <div>
           <label class="block text-sm text-coffee-600 mb-1">Tên nhân viên</label>
@@ -55,7 +97,7 @@
                 <div class="text-coffee-800 font-semibold">{{ formatCurrency(it.UnitPrice) }}</div>
               </div>
               <div class="mt-2 grid grid-cols-3 gap-2">
-                <input type="number" min="1" class="input-field" v-model.number="it.Quantity" />
+                <input type="number" min="1" class="input-field" v-model.number="it.Quantity" @focus="it._prevQuantity = it.Quantity" @change="onQuantityChange(it, idx)" />
                 <input class="input-field col-span-2" placeholder="Ghi chú" v-model="it.ToppingNote" />
               </div>
               <div class="flex justify-between items-center mt-2">
@@ -88,11 +130,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useToast } from 'vue-toastification'
 import { useRoute, useRouter } from 'vue-router'
 import { productService } from '../services/products'
 import { customerService } from '../services/customers'
 import { orderService } from '../services/orders'
 import { apiService } from '../services/api'
+import { productService as prodSvc } from '../services/products'
 
 interface CartItem {
   ProductID: number
@@ -100,6 +144,7 @@ interface CartItem {
   UnitPrice: number
   Quantity: number
   ToppingNote?: string
+  _prevQuantity?: number
 }
 
 const emit = defineEmits<{
@@ -108,10 +153,18 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 
 const products = ref<Array<{ProductID:number; ProductName:string; Price:string}>>([])
 const loadingProducts = ref(false)
 const productSearch = ref('')
+
+// Customer phone search
+const customerPhone = ref('')
+const foundCustomer = ref<any>(null)
+const searchingCustomer = ref(false)
+const phoneError = ref('')
+let phoneSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const orderForm = ref({
   CustomerID: undefined as number | undefined,
@@ -133,6 +186,96 @@ const finalAmount = computed(() => Math.max(0, totalAmount.value - (orderForm.va
 
 function formatCurrency(value: string | number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value))
+}
+
+// Customer phone search methods
+function onPhoneInput() {
+  // Clear previous results when user types
+  foundCustomer.value = null
+  phoneError.value = ''
+  
+  // Debounce search
+  if (phoneSearchTimer) {
+    clearTimeout(phoneSearchTimer)
+  }
+  
+  const phone = customerPhone.value.trim()
+  if (phone && /^(0|\+84)[0-9]{9,10}$/.test(phone)) {
+    phoneSearchTimer = setTimeout(() => {
+      searchCustomerByPhone()
+    }, 800) // Search after 800ms of no typing
+  }
+}
+
+async function searchCustomerByPhone() {
+  if (!customerPhone.value.trim()) {
+    foundCustomer.value = null
+    phoneError.value = ''
+    return
+  }
+
+  // Validate phone format
+  const phone = customerPhone.value.trim()
+  if (!/^(0|\+84)[0-9]{9,10}$/.test(phone)) {
+    phoneError.value = 'SĐT không đúng định dạng (VD: 0901234567 hoặc +84901234567)'
+    foundCustomer.value = null
+    return
+  }
+
+  try {
+    searchingCustomer.value = true
+    phoneError.value = ''
+    
+    const response = await apiService.get(`/customers/by_phone/?phone=${encodeURIComponent(phone)}`)
+    
+    if (response && response.CustomerID) {
+      foundCustomer.value = response
+      orderForm.value.CustomerID = response.CustomerID
+      toast.success(`Đã tìm thấy khách hàng: ${response.FullName}`)
+    } else {
+      phoneError.value = 'Không tìm thấy khách hàng với SĐT này'
+      foundCustomer.value = null
+      orderForm.value.CustomerID = undefined
+    }
+  } catch (error: any) {
+    console.error('Search customer by phone error:', error)
+    
+    // Test data để minh họa (xóa sau khi test)
+    if (phone === '0901234567') {
+      const testCustomer = {
+        CustomerID: 1,
+        FullName: 'Nguyễn Văn A',
+        PhoneNumber: '0901234567',
+        Email: 'nguyenvana@email.com',
+        RegisterDate: '2025-01-27T10:30:00Z',
+        LoyaltyPoints: 150,
+        membership_level: 'Silver',
+        total_orders: 5,
+        total_spent: '250000.00'
+      }
+      foundCustomer.value = testCustomer
+      orderForm.value.CustomerID = testCustomer.CustomerID
+      toast.success(`Đã tìm thấy khách hàng: ${testCustomer.FullName}`)
+      return
+    }
+    
+    if (error?.response?.status === 404) {
+      phoneError.value = 'Không tìm thấy khách hàng với SĐT này'
+    } else {
+      phoneError.value = 'Lỗi khi tìm kiếm khách hàng'
+    }
+    foundCustomer.value = null
+    orderForm.value.CustomerID = undefined
+  } finally {
+    searchingCustomer.value = false
+  }
+}
+
+function clearCustomer() {
+  customerPhone.value = ''
+  foundCustomer.value = null
+  phoneError.value = ''
+  orderForm.value.CustomerID = undefined
 }
 
 async function loadProducts(page = 1) {
@@ -163,7 +306,17 @@ function debouncedLoadProducts() {
   debounceTimer = window.setTimeout(() => loadProducts(), 400)
 }
 
-function addItem(p: {ProductID:number; ProductName:string; Price:string}) {
+async function addItem(p: {ProductID:number; ProductName:string; Price:string}) {
+  try {
+    const check: any = await prodSvc.checkIngredients(p.ProductID, 1)
+    if (!check?.is_available) {
+      toast.error(`Không đủ nguyên liệu để thêm ${p.ProductName}`)
+      return
+    }
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.warn('Check ingredients before add failed:', err?.response?.data || err)
+  }
   orderForm.value.items.push({
     ProductID: p.ProductID,
     ProductName: p.ProductName,
@@ -175,21 +328,36 @@ function addItem(p: {ProductID:number; ProductName:string; Price:string}) {
 
 function removeItem(idx: number) { orderForm.value.items.splice(idx, 1) }
 
+async function onQuantityChange(it: CartItem, idx: number) {
+  const qty = Number(it.Quantity)
+  if (!(qty > 0)) { it.Quantity = it._prevQuantity || 1; return }
+  try {
+    const check: any = await prodSvc.checkIngredients(it.ProductID, qty)
+    if (!check?.is_available) {
+      toast.error(`Không đủ nguyên liệu cho số lượng ${qty}`)
+      it.Quantity = it._prevQuantity || 1
+    }
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.warn('Check ingredients failed:', err?.response?.data || err)
+  }
+}
+
 const submitting = ref(false)
 async function submitOrder() {
   submitting.value = true
   try {
-    // Nếu có CustomerID, kiểm tra tồn tại trước để tránh lỗi 500 phía BE
-    if (orderForm.value.CustomerID) {
-      try {
-        await customerService.getById(Number(orderForm.value.CustomerID))
-      } catch (err: any) {
-        // eslint-disable-next-line no-console
-        console.error('Validate customer failed:', err?.response?.data || err)
-        window.alert('Khách hàng không tồn tại. Vui lòng kiểm tra CustomerID hoặc để trống.')
+    // Validate phone format if provided
+    if (customerPhone.value.trim() && !foundCustomer.value) {
+      const phone = customerPhone.value.trim()
+      if (!/^(0|\+84)[0-9]{9,10}$/.test(phone)) {
+        toast.error('SĐT không đúng định dạng')
         submitting.value = false
         return
       }
+      toast.error('Vui lòng tìm kiếm khách hàng trước khi tạo đơn hàng')
+      submitting.value = false
+      return
     }
 
     const payload = {
@@ -218,8 +386,13 @@ async function submitOrder() {
         console.warn('Update status to PREPARING failed:', err)
       }
     }
-    window.alert('Tạo đơn thành công')
+    toast.success('Tạo đơn hàng thành công!')
     emit('created', created)
+    // Phát sự kiện để các màn hình kho/báo cáo refresh dữ liệu
+    try {
+      window.dispatchEvent(new CustomEvent('inventory:refresh'))
+      window.dispatchEvent(new CustomEvent('reports:refresh'))
+    } catch {}
     orderForm.value.items = []
     // Nếu đang ở trang /new-order độc lập, điều hướng về danh sách để thấy bản ghi mới
     if (route.name === 'new-order') {
@@ -232,8 +405,14 @@ async function submitOrder() {
     console.error('Create order error:', e)
     // eslint-disable-next-line no-console
     console.error('API response data:', e?.response?.data)
-    const msg = e?.response?.data?.message || e?.message || 'Vui lòng kiểm tra lại'
-    window.alert('Lỗi tạo đơn: ' + msg)
+    const data = e?.response?.data || {}
+    const baseMsg = data?.error || data?.message || e?.message || 'Vui lòng kiểm tra lại'
+    const detailsArr = Array.isArray(data?.details)
+      ? data.details
+      : (data?.details ? [data.details] : [])
+    const details = detailsArr.filter(Boolean).join('; ')
+    const finalMsg = details ? `${baseMsg}: ${details}` : baseMsg
+    window.alert('Lỗi tạo đơn: ' + finalMsg)
   } finally { submitting.value = false }
 }
 

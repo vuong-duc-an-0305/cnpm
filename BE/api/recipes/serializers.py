@@ -58,12 +58,13 @@ class CongThucListSerializer(serializers.ModelSerializer):
         decimal_places=3,
         read_only=True
     )
+    ingredient_unit = serializers.CharField(source='IngredientID.Unit', read_only=True)
     
     class Meta:
         model = CongThuc
         fields = [
             'ProductID', 'product_name',
-            'IngredientID', 'ingredient_name', 'ingredient_stock',
+            'IngredientID', 'ingredient_name', 'ingredient_stock', 'ingredient_unit',
             'Quantity', 'Unit'
         ]
 

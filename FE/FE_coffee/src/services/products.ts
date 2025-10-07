@@ -40,7 +40,7 @@ export const productService = {
     is_available: boolean;
     missing_ingredients: any[];
   }> => {
-    return apiService.post(`/products/${id}/check-ingredients/`, { quantity })
+    return apiService.post(`/products/${id}/check_ingredients/`, { quantity })
   },
 
   // Update product status

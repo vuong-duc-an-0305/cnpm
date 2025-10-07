@@ -69,6 +69,28 @@
             <option :value="2">Ngừng kinh doanh</option>
           </select>
         </div>
+        
+        <!-- Ingredients for recipe -->
+        <div class="md:col-span-2">
+          <label class="block text-sm text-coffee-600 mb-2">Nguyên liệu (định mức cho 1 sản phẩm)</label>
+          <div class="space-y-3">
+            <div v-for="(ri, idx) in recipeInputs" :key="idx" class="grid grid-cols-12 gap-2 items-center">
+              <select v-model.number="ri.IngredientID" @change="onSelectIngredient(idx)" class="input-field col-span-5">
+                <option :value="undefined">-- Chọn nguyên liệu --</option>
+                <option v-for="i in ingredients" :key="i.IngredientID" :value="i.IngredientID">
+                  {{ i.IngredientName }}
+                  <span v-if="i.Unit"> ({{ i.Unit }})</span>
+                </option>
+              </select>
+              <input v-model.number="ri.Quantity" type="number" min="0.001" step="0.001" class="input-field col-span-4" placeholder="Số lượng" />
+              <span class="col-span-2 input-field inline-flex items-center cursor-default select-none">
+                {{ getDefaultUnit(ri.IngredientID) || 'Chọn nguyên liệu' }}
+              </span>
+              <button class="btn-ghost col-span-1" @click="removeRecipeInput(idx)">Xóa</button>
+            </div>
+            <button class="btn-secondary" @click="addRecipeInput">+ Thêm nguyên liệu</button>
+          </div>
+        </div>
       </div>
       <div v-if="createError" class="text-red-600 text-sm mt-3">{{ createError }}</div>
       <div class="flex justify-end gap-3 mt-4">
@@ -169,6 +191,27 @@
           </div>
         </div>
         <div v-if="editError" class="text-red-600 text-sm mt-3">{{ editError }}</div>
+        
+        <!-- Edit Recipes -->
+        <div class="mt-6">
+          <h4 class="text-md font-bold text-coffee-800 mb-3">Công thức (định mức/1 sản phẩm)</h4>
+          <div class="space-y-3">
+            <div v-for="(ri, idx) in editRecipeInputs" :key="idx" class="grid grid-cols-12 gap-2 items-center">
+              <select v-model.number="ri.IngredientID" @change="onSelectEditIngredient(idx)" class="input-field col-span-5">
+                <option :value="undefined">-- Chọn nguyên liệu --</option>
+                <option v-for="i in ingredients" :key="i.IngredientID" :value="i.IngredientID">
+                  {{ i.IngredientName }}<span v-if="i.Unit"> ({{ i.Unit }})</span>
+                </option>
+              </select>
+              <input v-model.number="ri.Quantity" type="number" min="0.001" step="0.001" class="input-field col-span-4" placeholder="Số lượng" />
+              <span class="col-span-2 input-field inline-flex items-center cursor-default select-none">
+                {{ getDefaultUnit(ri.IngredientID) || 'Chọn nguyên liệu' }}
+              </span>
+              <button class="btn-ghost col-span-1" @click="removeEditRecipeInput(idx)">Xóa</button>
+            </div>
+            <button class="btn-secondary" @click="addEditRecipeInput">+ Thêm nguyên liệu</button>
+          </div>
+        </div>
         <div class="flex justify-end gap-3 mt-4">
           <button class="btn-secondary" @click="cancelEdit">Hủy</button>
           <button class="btn-primary" :disabled="editing" @click="submitEdit">{{ editing ? 'Đang lưu...' : 'Lưu' }}</button>
@@ -220,6 +263,8 @@ import {
 import type { Product } from '../types'
 import { productService } from '../services/products'
 import { categoryService } from '../services/categories'
+import { inventoryService } from '../services/inventory'
+import { recipeService } from '../services/recipes'
 
 const toast = useToast()
 const products = ref<Product[]>([])
@@ -305,6 +350,23 @@ const creating = ref(false)
 const createError = ref('')
 const createForm = ref({ ProductName: '', Price: 0, ImageUrl: '', CategoryID: 1, Status: 1 })
 const isValidCreate = computed(() => createForm.value.ProductName.trim().length > 0 && Number(createForm.value.Price) > 0 && Number(createForm.value.CategoryID) > 0)
+const ingredients = ref<Array<{ IngredientID:number; IngredientName:string; Unit?: string }>>([])
+const recipeInputs = ref<Array<{ IngredientID?: number; Quantity: number; Unit: string }>>([])
+function addRecipeInput() { recipeInputs.value.push({ IngredientID: undefined, Quantity: 0, Unit: '' }) }
+function removeRecipeInput(idx: number) { recipeInputs.value.splice(idx, 1) }
+function getDefaultUnit(ingredientId?: number): string | undefined {
+  const ing = ingredients.value.find(i => i.IngredientID === ingredientId)
+  return (ing?.Unit || undefined) as any
+}
+function onSelectIngredient(idx: number) {
+  const ri = recipeInputs.value[idx]
+  if (!ri) return
+  const defUnit = getDefaultUnit(ri.IngredientID)
+  // Tự động gán đơn vị theo nguyên liệu
+  if (defUnit) {
+    ri.Unit = defUnit
+  }
+}
 function openCreate() { showCreate.value = true }
 function cancelCreate() { showCreate.value = false; createError.value = '' }
 async function submitCreate() {
@@ -312,15 +374,23 @@ async function submitCreate() {
   try {
     creating.value = true
     createError.value = ''
-    await productService.create({
+    const created = await productService.create({
       ProductName: createForm.value.ProductName.trim(),
       Price: Number(createForm.value.Price),
       ImageUrl: createForm.value.ImageUrl || undefined,
       CategoryID: Number(createForm.value.CategoryID),
       Status: Number(createForm.value.Status) as any,
     })
+    // Create recipes if provided
+    const validRecipes = recipeInputs.value
+      .filter(r => r.IngredientID && Number(r.Quantity) > 0 && (r.Unit || '').trim().length > 0)
+      .map(r => ({ IngredientID: r.IngredientID as number, Quantity: Number(r.Quantity), Unit: r.Unit.trim() }))
+    if (created?.ProductID && validRecipes.length > 0) {
+      await recipeService.bulkCreate(created.ProductID, validRecipes)
+    }
     showCreate.value = false
     createForm.value = { ProductName: '', Price: 0, ImageUrl: '', CategoryID: 1, Status: 1 }
+    recipeInputs.value = []
     await fetchProducts()
   } catch (err: any) {
     createError.value = err?.response?.data?.message || err?.response?.data?.detail || 'Không thể tạo sản phẩm'
@@ -336,10 +406,15 @@ const showEdit = ref(false)
 const editing = ref(false)
 const editError = ref('')
 const editForm = ref({ ProductID: 0, ProductName: '', Price: 0, ImageUrl: '', CategoryID: 1, Status: 1 })
+const editRecipeInputs = ref<Array<{ IngredientID?: number; Quantity: number; Unit: string }>>([])
 function openEdit(p: Product) {
   showEdit.value = true
   editError.value = ''
   editForm.value = { ProductID: p.ProductID, ProductName: p.ProductName, Price: Number(p.Price), ImageUrl: p.ImageUrl || '', CategoryID: p.CategoryID, Status: p.Status as any }
+  // load current recipes
+  recipeService.getByProduct(p.ProductID).then((list: any) => {
+    editRecipeInputs.value = (list || []).map((r: any) => ({ IngredientID: r.IngredientID, Quantity: Number(r.Quantity), Unit: r.Unit }))
+  }).catch(() => { editRecipeInputs.value = [] })
 }
 function cancelEdit() { showEdit.value = false; editError.value = '' }
 async function submitEdit() {
@@ -353,6 +428,16 @@ async function submitEdit() {
       CategoryID: Number(editForm.value.CategoryID),
       Status: Number(editForm.value.Status) as any,
     })
+    // update recipes: delete old and bulk create new if any
+    try {
+      await recipeService.deleteByProduct(editForm.value.ProductID)
+    } catch (_) { /* ignore */ }
+    const validEdits = editRecipeInputs.value
+      .filter(r => r.IngredientID && Number(r.Quantity) > 0 && (r.Unit || '').trim().length > 0)
+      .map(r => ({ IngredientID: r.IngredientID as number, Quantity: Number(r.Quantity), Unit: r.Unit.trim() }))
+    if (validEdits.length > 0) {
+      await recipeService.bulkCreate(editForm.value.ProductID, validEdits)
+    }
     showEdit.value = false
     await fetchProducts()
   } catch (err: any) {
@@ -361,6 +446,18 @@ async function submitEdit() {
     console.error('Update product error:', err?.response?.data || err)
   } finally {
     editing.value = false
+  }
+}
+
+function addEditRecipeInput() { editRecipeInputs.value.push({ IngredientID: undefined, Quantity: 0, Unit: '' }) }
+function removeEditRecipeInput(idx: number) { editRecipeInputs.value.splice(idx, 1) }
+function onSelectEditIngredient(idx: number) {
+  const ri = editRecipeInputs.value[idx]
+  if (!ri) return
+  const defUnit = getDefaultUnit(ri.IngredientID)
+  // Tự động gán đơn vị theo nguyên liệu
+  if (defUnit) {
+    ri.Unit = defUnit
   }
 }
 
@@ -395,6 +492,9 @@ onMounted(async () => {
   try {
     const res: any = await categoryService.getAll()
     categories.value = Array.isArray(res) ? res : (res.results || [])
+    // load ingredients for recipe selection
+    const ingRes: any = await inventoryService.getAll()
+    ingredients.value = Array.isArray(ingRes) ? ingRes : (ingRes.results || [])
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('Load categories failed', err)

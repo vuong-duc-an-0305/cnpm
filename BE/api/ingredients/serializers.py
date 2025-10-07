@@ -11,7 +11,7 @@ class NguyenLieuSerializer(serializers.ModelSerializer):
     class Meta:
         model = NguyenLieu
         fields = [
-            'IngredientID', 'IngredientName', 'QuantityInStock', 'MinQuantity'
+            'IngredientID', 'IngredientName', 'Unit', 'QuantityInStock', 'MinQuantity'
         ]
         read_only_fields = ['IngredientID']
     
@@ -42,7 +42,7 @@ class NguyenLieuDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = NguyenLieu
         fields = [
-            'IngredientID', 'IngredientName', 'QuantityInStock',
+            'IngredientID', 'IngredientName', 'Unit', 'QuantityInStock',
             'MinQuantity', 'is_low_stock', 'stock_percentage'
         ]
         read_only_fields = ['IngredientID']

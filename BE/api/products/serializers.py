@@ -4,6 +4,7 @@ Serializers Layer - Sản phẩm
 from rest_framework import serializers
 from .models import SanPham
 from api.categories.serializers import DanhMucSanPhamSerializer
+from api.recipes.models import CongThuc
 
 
 class SanPhamSerializer(serializers.ModelSerializer):
@@ -35,14 +36,30 @@ class SanPhamDetailSerializer(serializers.ModelSerializer):
     category = DanhMucSanPhamSerializer(source='CategoryID', read_only=True)
     status_display = serializers.CharField(source='get_Status_display', read_only=True)
     is_available = serializers.BooleanField(read_only=True)
+    ingredients = serializers.SerializerMethodField()
     
     class Meta:
         model = SanPham
         fields = [
             'ProductID', 'ProductName', 'Price', 'ImageUrl',
-            'CategoryID', 'category', 'Status', 'status_display', 'is_available'
+            'CategoryID', 'category', 'Status', 'status_display', 'is_available',
+            'ingredients'
         ]
         read_only_fields = ['ProductID']
+
+    def get_ingredients(self, obj):
+        recipes = CongThuc.objects.filter(ProductID=obj).select_related('IngredientID')
+        result = []
+        for r in recipes:
+            result.append({
+                'IngredientID': r.IngredientID.IngredientID,
+                'IngredientName': r.IngredientID.IngredientName,
+                'IngredientUnit': r.IngredientID.Unit,
+                'Quantity': r.Quantity,
+                'Unit': r.Unit,
+                'QuantityInStock': r.IngredientID.QuantityInStock,
+            })
+        return result
 
 
 class SanPhamListSerializer(serializers.ModelSerializer):

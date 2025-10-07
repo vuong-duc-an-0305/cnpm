@@ -149,7 +149,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 // Removed icon imports to avoid dependency issues
-import type { TableColumn, SortOptions } from '@/types'
+import type { TableColumn, SortOptions } from '../../types'
 
 interface Props {
   data: any[]

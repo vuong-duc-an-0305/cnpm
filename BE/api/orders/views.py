@@ -223,6 +223,51 @@ class HoaDonViewSet(viewsets.ModelViewSet):
             'from_date': from_date,
             'to_date': to_date
         })
+
+    @action(detail=False, methods=['get'])
+    def revenue_trend(self, request):
+        """Dữ liệu doanh thu theo thời gian (day|week|month)"""
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+        interval = request.query_params.get('interval', 'day')
+
+        from_date_obj = None
+        to_date_obj = None
+        if from_date:
+            try:
+                from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'from_date phải có định dạng YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        if to_date:
+            try:
+                to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'to_date phải có định dạng YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = OrderService.get_revenue_trend(from_date_obj, to_date_obj, interval)
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def revenue_by_category(self, request):
+        """Tổng doanh thu theo danh mục"""
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        from_date_obj = None
+        to_date_obj = None
+        if from_date:
+            try:
+                from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'from_date phải có định dạng YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+        if to_date:
+            try:
+                to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'to_date phải có định dạng YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = OrderService.get_revenue_by_category(from_date_obj, to_date_obj)
+        return Response(data)
     
     @action(detail=False, methods=['get'])
     def by_customer(self, request):

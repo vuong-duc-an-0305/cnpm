@@ -57,26 +57,30 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+// @ts-ignore
 import AppSidebar from './AppSidebar.vue'
+// @ts-ignore
 import AppHeader from './AppHeader.vue'
-import type { User } from '@/types'
+import type { User } from '../../types'
+import { useAuth } from '../../composables/useAuth'
 
 const router = useRouter()
 const toast = useToast()
+const { user: authUser, logout: authLogout, isAuthenticated } = useAuth()
 
 // State
 const sidebarOpen = ref(true)
 const isLoading = ref(false)
 const loadingMessage = ref('Đang tải...')
 
-// Mock user data - In real app, this would come from auth store
+// User data from auth
 const currentUser = computed<User>(() => ({
   id: 1,
-  username: 'admin',
-  email: 'admin@coffeeshop.com',
-  firstName: 'Admin',
-  lastName: 'User',
-  role: 'admin',
+  username: authUser.value.role,
+  email: `${authUser.value.role}@coffeeshop.com`,
+  firstName: authUser.value.name,
+  lastName: '',
+  role: authUser.value.role as 'admin' | 'cashier' | 'manager',
   isActive: true
 }))
 
@@ -116,8 +120,8 @@ const handleLogout = async () => {
     // Simulate logout process
     await new Promise(resolve => setTimeout(resolve, 1000))
     
-    // Clear auth data
-    localStorage.removeItem('auth_token')
+    // Clear auth data using auth composable
+    authLogout()
     
     toast.success('Đăng xuất thành công')
     router.push('/login')
@@ -131,8 +135,7 @@ const handleLogout = async () => {
 // Initialize app
 onMounted(() => {
   // Check if user is authenticated
-  const token = localStorage.getItem('auth_token')
-  if (!token) {
+  if (!isAuthenticated.value) {
     // Redirect to login if no token
     router.push('/login')
   }

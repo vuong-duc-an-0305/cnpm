@@ -3,6 +3,7 @@ API URLs configuration
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from api.reports.views import export_report_xlsx
 
 # Import routers từ các app
 from api.categories.urls import router as categories_router
@@ -30,4 +31,5 @@ router.registry.extend(inventory_router.registry)
 urlpatterns = [
     path('', include(router.urls)),
     path('auth/', include('rest_framework.urls')),
+    path('reports/export.xlsx', export_report_xlsx),
 ]
