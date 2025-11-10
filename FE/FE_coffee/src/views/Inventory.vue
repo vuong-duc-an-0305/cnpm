@@ -387,12 +387,14 @@ async function doDelete() {
   try {
     deleting.value = true
     const id = showDeleteConfirm.value.IngredientID
-    closeDelete()
-    ingredients.value = ingredients.value.filter(x => x.IngredientID !== id)
     await inventoryService.delete(id)
+    // Xóa khỏi danh sách sau khi xóa thành công
+    ingredients.value = ingredients.value.filter(x => x.IngredientID !== id)
+    closeDelete()
     await fetchIngredients().catch(() => {})
   } catch (err: any) {
-    toast.error(err?.response?.data?.message || err?.response?.data?.detail || 'Không thể xóa nguyên liệu')
+    const msg = err?.response?.data?.error || err?.response?.data?.message || err?.response?.data?.detail || 'Không thể xóa nguyên liệu'
+    toast.error(msg)
     // eslint-disable-next-line no-console
     console.error('Delete ingredient error:', err?.response?.data || err)
     await fetchIngredients().catch(() => {})

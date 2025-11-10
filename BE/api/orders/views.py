@@ -165,6 +165,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
         """Thống kê doanh thu"""
         from_date = request.query_params.get('from_date')
         to_date = request.query_params.get('to_date')
+        include_all_status = request.query_params.get('include_all_status', 'false').lower() == 'true'
         
         from_date_obj = None
         to_date_obj = None
@@ -187,7 +188,7 @@ class HoaDonViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
-        stats = OrderService.get_revenue_statistics(from_date_obj, to_date_obj)
+        stats = OrderService.get_revenue_statistics(from_date_obj, to_date_obj, include_all_status)
         return Response(stats)
     
     @action(detail=False, methods=['get'], url_path='best_selling')

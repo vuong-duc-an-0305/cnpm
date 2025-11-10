@@ -13,12 +13,13 @@ export const dashboardService = {
   // Lấy dữ liệu tổng quan cho dashboard
   getDashboardData: async (): Promise<DashboardData> => {
     try {
-      // Lấy thống kê doanh thu hôm nay (ngày thực tế)
+      // Lấy thống kê doanh thu hôm nay (ngày thực tế) - bao gồm tất cả trạng thái đơn hàng
       const today = new Date()
       const todayStr = today.toISOString().split('T')[0]
       const revenueStats = await apiService.get('/orders/revenue_stats/', {
         from_date: todayStr,
-        to_date: todayStr
+        to_date: todayStr,
+        include_all_status: true
       })
 
       // Lấy đơn hàng gần đây (5 đơn mới nhất)
@@ -71,11 +72,12 @@ export const dashboardService = {
   },
 
   // Lấy thống kê theo khoảng thời gian
-  getStatsByPeriod: async (fromDate: string, toDate: string): Promise<DashboardStats> => {
+  getStatsByPeriod: async (fromDate: string, toDate: string, includeAllStatus: boolean = false): Promise<DashboardStats> => {
     try {
       const revenueStats = await apiService.get('/orders/revenue_stats/', {
         from_date: fromDate,
-        to_date: toDate
+        to_date: toDate,
+        include_all_status: includeAllStatus
       })
 
       const summary = revenueStats.summary || {}

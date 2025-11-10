@@ -108,10 +108,8 @@ class KhachHangViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         success, message = CustomerService.delete_customer(instance.CustomerID)
         if success:
-            return Response(
-                {'message': message},
-                status=status.HTTP_204_NO_CONTENT
-            )
+            # 204 No Content không được phép có body
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
             {'error': message},
             status=status.HTTP_400_BAD_REQUEST

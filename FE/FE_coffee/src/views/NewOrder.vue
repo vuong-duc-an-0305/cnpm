@@ -14,7 +14,6 @@
                 class="input-field w-full" 
                 placeholder="Nhập SĐT (VD: 0901234567)" 
                 @input="onPhoneInput"
-                @blur="searchCustomerByPhone"
               />
               <div v-if="searchingCustomer" class="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-coffee-600"></div>
@@ -129,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useRoute, useRouter } from 'vue-router'
 import { productService } from '../services/products'
@@ -164,7 +163,7 @@ const customerPhone = ref('')
 const foundCustomer = ref<any>(null)
 const searchingCustomer = ref(false)
 const phoneError = ref('')
-let phoneSearchTimer: ReturnType<typeof setTimeout> | undefined
+let phoneSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 const orderForm = ref({
   CustomerID: undefined as number | undefined,
@@ -197,12 +196,14 @@ function onPhoneInput() {
   // Debounce search
   if (phoneSearchTimer) {
     clearTimeout(phoneSearchTimer)
+    phoneSearchTimer = null
   }
   
   const phone = customerPhone.value.trim()
   if (phone && /^(0|\+84)[0-9]{9,10}$/.test(phone)) {
     phoneSearchTimer = setTimeout(() => {
       searchCustomerByPhone()
+      phoneSearchTimer = null
     }, 800) // Search after 800ms of no typing
   }
 }
@@ -211,6 +212,11 @@ async function searchCustomerByPhone() {
   if (!customerPhone.value.trim()) {
     foundCustomer.value = null
     phoneError.value = ''
+    return
+  }
+
+  // Tránh gọi API nếu đang search
+  if (searchingCustomer.value) {
     return
   }
 
@@ -228,11 +234,19 @@ async function searchCustomerByPhone() {
     
     const response = await apiService.get(`/customers/by_phone/?phone=${encodeURIComponent(phone)}`)
     
-    if (response && response.CustomerID) {
-      foundCustomer.value = response
-      orderForm.value.CustomerID = response.CustomerID
-      toast.success(`Đã tìm thấy khách hàng: ${response.FullName}`)
+    // Kiểm tra response có hợp lệ không
+    if (response && typeof response === 'object' && response.CustomerID) {
+      // Chỉ hiển thị toast nếu chưa có khách hàng hoặc khách hàng khác
+      if (!foundCustomer.value || foundCustomer.value.CustomerID !== response.CustomerID) {
+        foundCustomer.value = response
+        orderForm.value.CustomerID = response.CustomerID
+        toast.success(`Đã tìm thấy khách hàng: ${response.FullName}`)
+      } else {
+        foundCustomer.value = response
+        orderForm.value.CustomerID = response.CustomerID
+      }
     } else {
+      // Response không hợp lệ hoặc rỗng
       phoneError.value = 'Không tìm thấy khách hàng với SĐT này'
       foundCustomer.value = null
       orderForm.value.CustomerID = undefined
@@ -253,19 +267,32 @@ async function searchCustomerByPhone() {
         total_orders: 5,
         total_spent: '250000.00'
       }
-      foundCustomer.value = testCustomer
-      orderForm.value.CustomerID = testCustomer.CustomerID
-      toast.success(`Đã tìm thấy khách hàng: ${testCustomer.FullName}`)
+      // Chỉ hiển thị toast nếu chưa có khách hàng hoặc khách hàng khác
+      if (!foundCustomer.value || foundCustomer.value.CustomerID !== testCustomer.CustomerID) {
+        foundCustomer.value = testCustomer
+        orderForm.value.CustomerID = testCustomer.CustomerID
+        toast.success(`Đã tìm thấy khách hàng: ${testCustomer.FullName}`)
+      } else {
+        foundCustomer.value = testCustomer
+        orderForm.value.CustomerID = testCustomer.CustomerID
+      }
       return
     }
     
+    // Xử lý lỗi dựa trên status code
     if (error?.response?.status === 404) {
       phoneError.value = 'Không tìm thấy khách hàng với SĐT này'
+      foundCustomer.value = null
+      orderForm.value.CustomerID = undefined
+    } else if (error?.response?.status === 400) {
+      phoneError.value = error?.response?.data?.error || 'Số điện thoại không hợp lệ'
+      foundCustomer.value = null
+      orderForm.value.CustomerID = undefined
     } else {
       phoneError.value = 'Lỗi khi tìm kiếm khách hàng'
+      foundCustomer.value = null
+      orderForm.value.CustomerID = undefined
     }
-    foundCustomer.value = null
-    orderForm.value.CustomerID = undefined
   } finally {
     searchingCustomer.value = false
   }
@@ -417,4 +444,12 @@ async function submitOrder() {
 }
 
 onMounted(() => { loadProducts() })
+
+// Cleanup timer khi component unmount
+onUnmounted(() => {
+  if (phoneSearchTimer) {
+    clearTimeout(phoneSearchTimer)
+    phoneSearchTimer = null
+  }
+})
 </script>

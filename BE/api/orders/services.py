@@ -305,9 +305,14 @@ class OrderService:
         return True, "Xóa đơn hàng thành công"
     
     @staticmethod
-    def get_revenue_statistics(from_date=None, to_date=None):
+    def get_revenue_statistics(from_date=None, to_date=None, include_all_status=False):
         """Thống kê doanh thu"""
-        queryset = HoaDon.objects.filter(Status='COMPLETED')
+        if include_all_status:
+            # Cho dashboard: lấy tất cả đơn hàng hôm nay
+            queryset = HoaDon.objects.all()
+        else:
+            # Cho báo cáo: chỉ lấy đơn hàng đã hoàn thành
+            queryset = HoaDon.objects.filter(Status='COMPLETED')
         
         if from_date:
             queryset = queryset.filter(OrderDate__gte=from_date)

@@ -50,7 +50,7 @@
         :icon="DollarSign"
       />
       <StatsCard
-        title="Đơn hàng"
+        title="Đơn hàng hôm nay"
         :value="todayStats.total_orders"
         :change="todayStats.orders_growth"
         change-type="increase"
@@ -58,7 +58,7 @@
         :icon="ShoppingCart"
       />
       <StatsCard
-        title="Khách hàng mới"
+        title="Tổng số khách hàng"
         :value="todayStats.total_customers"
         :change="todayStats.customers_growth"
         change-type="increase"
