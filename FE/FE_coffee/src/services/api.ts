@@ -1,10 +1,15 @@
 import axios from 'axios'
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { useToast } from 'vue-toastification'
+
+// ✅ FIX: Lấy API URL từ environment variable
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://16.171.13.43:8000/api'
+
+console.log('🔗 API Base URL:', baseURL)
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: baseURL,  // ✅ Sửa từ '/api'
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -18,6 +23,7 @@ api.interceptors.request.use(
       method: config.method?.toUpperCase(),
       url: config.url,
       baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
       params: config.params
     })
     
@@ -39,6 +45,7 @@ api.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error('❌ Request Error:', error)
     return Promise.reject(error)
   }
 )
@@ -46,7 +53,7 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('🌐 API Request:', {
+    console.log('✅ API Response Success:', {
       method: response.config.method?.toUpperCase(),
       url: response.config.url,
       status: response.status,
@@ -57,6 +64,13 @@ api.interceptors.response.use(
   (error) => {
     const toast = useToast()
     
+    console.error('❌ API Error:', {
+      status: error.response?.status,
+      message: error.message,
+      url: error.config?.url,
+      baseURL: baseURL
+    })
+    
     // Handle common errors
     if (error.response) {
       const { status, data } = error.response
@@ -64,7 +78,6 @@ api.interceptors.response.use(
       switch (status) {
         case 401:
           toast.error('Phiên đăng nhập đã hết hạn')
-          // Redirect to login
           localStorage.removeItem('auth_token')
           window.location.href = '/login'
           break
@@ -75,7 +88,6 @@ api.interceptors.response.use(
           toast.error('Không tìm thấy dữ liệu')
           break
         case 422:
-          // Validation errors
           if (data.errors) {
             Object.values(data.errors).forEach((error: any) => {
               toast.error(Array.isArray(error) ? error[0] : error)
@@ -91,9 +103,11 @@ api.interceptors.response.use(
           toast.error(data.message || 'Có lỗi xảy ra')
       }
     } else if (error.request) {
-      toast.error('Không thể kết nối đến máy chủ')
+      console.error('❌ No Response:', error.request)
+      toast.error(`Không thể kết nối đến: ${baseURL}`)
     } else {
-      toast.error('Có lỗi xảy ra')
+      console.error('❌ Error:', error.message)
+      toast.error('Có lỗi xảy ra: ' + error.message)
     }
     
     return Promise.reject(error)
@@ -102,37 +116,30 @@ api.interceptors.response.use(
 
 // Generic API methods
 export const apiService = {
-  // GET request
   get: <T = any>(url: string, params?: any): Promise<T> => {
     return api.get(url, { params }).then(response => response.data)
   },
 
-  // POST request
   post: <T = any>(url: string, data?: any): Promise<T> => {
     return api.post(url, data).then(response => response.data)
   },
 
-  // PUT request
   put: <T = any>(url: string, data?: any): Promise<T> => {
     return api.put(url, data).then(response => response.data)
   },
 
-  // PATCH request
   patch: <T = any>(url: string, data?: any): Promise<T> => {
     return api.patch(url, data).then(response => response.data)
   },
 
-  // DELETE request
   delete: <T = any>(url: string): Promise<T> => {
     return api.delete(url).then(response => response.data)
   },
 
-  // Download file (blob)
   download: (url: string, params?: any): Promise<Blob> => {
     return api.get(url, { params, responseType: 'blob' }).then(res => res.data as Blob)
   },
 
-  // Upload file
   upload: <T = any>(url: string, formData: FormData): Promise<T> => {
     return api.post(url, formData, {
       headers: {

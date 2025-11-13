@@ -3,7 +3,7 @@ FE_DIR="./FE/FE_coffee"
 
 echo "Starting BE"
 cd "$BE_DIR"
-python manage.py runserver &
+python3 manage.py runserver &
 cd ..
 sleep 2
 
